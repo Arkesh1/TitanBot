@@ -261,7 +261,8 @@ export default {
                                 )
                             ) {
                                 await channel.send(
-                                    `🏆 **Congrats, You're One of the first 500 OG VILLAGERS!**`
+                                    `
+                                    🏆 **Congrats, You're One of the first 500 OG VILLAGERS!**`
                                 );
                             }
                         }
