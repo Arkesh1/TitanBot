@@ -48,49 +48,34 @@ export async function createWelcomeCard({ user }) {
         .toBuffer();
 
     // Simple orange background
-    const svg = `
-        <svg
-            width="${width}"
-            height="${height}"
-            viewBox="0 0 ${width} ${height}"
-            xmlns="http://www.w3.org/2000/svg"
+const backgroundSvg = `
+<svg
+    width="${width}"
+    height="${height}"
+    viewBox="0 0 ${width} ${height}"
+    xmlns="http://www.w3.org/2000/svg"
+>
+    <defs>
+        <linearGradient
+            id="filmyGradient"
+            x1="0%"
+            y1="0%"
+            x2="100%"
+            y2="100%"
         >
-            <!-- Orange background -->
-            <rect
-                width="${width}"
-                height="${height}"
-                fill="#ff6a00"
-            />
+            <stop offset="0%" stop-color="#C85A16"/>
+            <stop offset="62%" stop-color="#C85A16"/>
+            <stop offset="100%" stop-color="#087E9B"/>
+        </linearGradient>
+    </defs>
 
-            <!-- Avatar shadow -->
-            <circle
-                cx="600"
-                cy="337"
-                r="218"
-                fill="#000000"
-                opacity="0.25"
-            />
+    <rect
+        width="${width}"
+        height="${height}"
+        fill="url(#filmyGradient)"
+    />
+</svg>
+`;
 
-            <!-- White avatar border -->
-            <circle
-                cx="600"
-                cy="337"
-                r="207"
-                fill="#ffffff"
-            />
-
-            <!-- User avatar -->
-            <image
-                href="data:image/png;base64,${avatar.toString('base64')}"
-                x="400"
-                y="137"
-                width="400"
-                height="400"
-            />
-        </svg>
-    `;
-
-    return sharp(Buffer.from(svg))
-        .png()
-        .toBuffer();
+const background = sharp(Buffer.from(backgroundSvg));
 }
