@@ -93,8 +93,7 @@ if (!canEmbed) {
                 welcomeConfig.welcomeEmbed?.color ||
                 getColor('success')
             )
-            .setTitle(embedTitle)
-            .setDescription(welcomeMessage)
+
             .setThumbnail(user.displayAvatarURL())
             .setTimestamp()
             .setFooter({ text: embedFooter });
