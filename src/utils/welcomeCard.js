@@ -4,7 +4,6 @@ export async function createWelcomeCard({ user }) {
     const width = 1200;
     const height = 675;
 
-    // Download the user's Discord avatar
     const avatarUrl = user.displayAvatarURL({
         extension: 'png',
         size: 512,
@@ -21,10 +20,10 @@ export async function createWelcomeCard({ user }) {
         await response.arrayBuffer()
     );
 
-    // BIG avatar
+    // Large avatar
     const avatarSize = 400;
 
-    // Make avatar circular
+    // Crop avatar into a circle
     const avatar = await sharp(avatarBuffer)
         .resize(avatarSize, avatarSize, {
             fit: 'cover',
@@ -47,35 +46,71 @@ export async function createWelcomeCard({ user }) {
         .png()
         .toBuffer();
 
-    // Simple orange background
-const backgroundSvg = `
-<svg
-    width="${width}"
-    height="${height}"
-    viewBox="0 0 ${width} ${height}"
-    xmlns="http://www.w3.org/2000/svg"
->
-    <defs>
-        <linearGradient
-            id="filmyGradient"
-            x1="0%"
-            y1="0%"
-            x2="100%"
-            y2="100%"
-        >
-            <stop offset="0%" stop-color="#C85A16"/>
-            <stop offset="62%" stop-color="#C85A16"/>
-            <stop offset="100%" stop-color="#087E9B"/>
-        </linearGradient>
-    </defs>
+    // Create a clean orange background
+    const background = sharp({
+        create: {
+            width,
+            height,
+            channels: 4,
+            background: {
+                r: 205,
+                g: 82,
+                b: 0,
+                alpha: 1,
+            },
+        },
+    });
 
-    <rect
-        width="${width}"
-        height="${height}"
-        fill="url(#filmyGradient)"
-    />
-</svg>
-`;
+    // Add a subtle dark-orange shadow behind avatar
+    const shadow = Buffer.from(`
+        <svg width="440" height="440">
+            <circle
+                cx="220"
+                cy="220"
+                r="210"
+                fill="#000000"
+                opacity="0.22"
+            />
+        </svg>
+    `);
 
-const background = sharp(Buffer.from(backgroundSvg));
+    // White circular border
+    const border = Buffer.from(`
+        <svg width="420" height="420">
+            <circle
+                cx="210"
+                cy="210"
+                r="202"
+                fill="none"
+                stroke="#ffffff"
+                stroke-width="10"
+            />
+        </svg>
+    `);
+
+    return background
+        .composite([
+            // Shadow
+            {
+                input: shadow,
+                left: 380,
+                top: 117,
+            },
+
+            // White border
+            {
+                input: border,
+                left: 390,
+                top: 127,
+            },
+
+            // Avatar
+            {
+                input: avatar,
+                left: 400,
+                top: 137,
+            },
+        ])
+        .png()
+        .toBuffer();
 }
