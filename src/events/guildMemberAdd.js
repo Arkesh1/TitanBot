@@ -65,7 +65,7 @@ if (!canEmbed) {
                 welcomeConfig.welcomeEmbed?.color ||
                 getColor('success')
             )
-
+            .setDescription(welcomeMessage)
             .setImage('attachment://welcome-card.png')
             .setTimestamp()
             .setFooter({ text: embedFooter });
