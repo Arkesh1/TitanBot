@@ -7,6 +7,7 @@ import { logEvent, EVENT_TYPES } from '../services/loggingService.js';
 import { getServerCounters, updateCounter } from '../services/serverstatsService.js';
 import { setBirthday as dbSetBirthday } from '../utils/database.js';
 import { logger } from '../utils/logger.js';
+import { createWelcomeCard } from '../utils/welcomeCard.js';
 
 export default {
   name: Events.GuildMemberAdd,
@@ -45,32 +46,65 @@ export default {
                     ? formatWelcomeMessage(welcomeConfig.welcomeEmbed.footer, formatData)
                     : `Welcome to ${guild.name}!`;
 
-                const canEmbed = permissions.has(PermissionFlagsBits.EmbedLinks);
+              const canEmbed = permissions.has(PermissionFlagsBits.EmbedLinks);
 
-                if (!canEmbed) {
-                    await channel.send({
-                        content: messageContent || welcomeMessage
-                    });
-                } else {
-                    const embed = new EmbedBuilder()
-                        .setColor(welcomeConfig.welcomeEmbed?.color || getColor('success'))
-                        .setTitle(embedTitle)
-                        .setDescription(welcomeMessage)
-                        .setThumbnail(user.displayAvatarURL())
-                        .setTimestamp()
-                        .setFooter({ text: embedFooter });
-                    
-                    if (welcomeConfig.welcomeImage) {
-                        embed.setImage(welcomeConfig.welcomeImage);
-                    } else if (welcomeConfig.welcomeEmbed?.image?.url) {
-                        embed.setImage(welcomeConfig.welcomeEmbed.image.url);
-                    }
-                    
-                    await channel.send({ 
-                        content: messageContent,
-                        embeds: [embed] 
-                    });
+if (!canEmbed) {
+    await channel.send({
+        content: messageContent || welcomeMessage
+    });
+} else {
+    try {
+        const cardBuffer = await createWelcomeCard({
+            user,
+            guild,
+            welcomeMessage,
+        });
+
+        const embed = new EmbedBuilder()
+            .setColor(
+                welcomeConfig.welcomeEmbed?.color ||
+                getColor('success')
+            )
+            .setTitle(embedTitle)
+            .setDescription(welcomeMessage)
+            .setImage('attachment://welcome-card.png')
+            .setTimestamp()
+            .setFooter({ text: embedFooter });
+
+        await channel.send({
+            content: messageContent,
+            embeds: [embed],
+            files: [
+                {
+                    attachment: cardBuffer,
+                    name: 'welcome-card.png',
                 }
+            ]
+        });
+
+    } catch (error) {
+        logger.warn(
+            'Failed to generate welcome card, falling back to normal embed:',
+            error
+        );
+
+        const embed = new EmbedBuilder()
+            .setColor(
+                welcomeConfig.welcomeEmbed?.color ||
+                getColor('success')
+            )
+            .setTitle(embedTitle)
+            .setDescription(welcomeMessage)
+            .setThumbnail(user.displayAvatarURL())
+            .setTimestamp()
+            .setFooter({ text: embedFooter });
+
+        await channel.send({
+            content: messageContent,
+            embeds: [embed]
+        });
+    }
+}
             }
         }
         
