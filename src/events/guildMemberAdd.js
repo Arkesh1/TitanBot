@@ -65,8 +65,7 @@ if (!canEmbed) {
                 welcomeConfig.welcomeEmbed?.color ||
                 getColor('success')
             )
-            .setTitle(embedTitle)
-            .setDescription(welcomeMessage)
+
             .setImage('attachment://welcome-card.png')
             .setTimestamp()
             .setFooter({ text: embedFooter });
@@ -93,7 +92,8 @@ if (!canEmbed) {
                 welcomeConfig.welcomeEmbed?.color ||
                 getColor('success')
             )
-
+            .setTitle(embedTitle)
+            .setDescription(welcomeMessage)
             .setThumbnail(user.displayAvatarURL())
             .setTimestamp()
             .setFooter({ text: embedFooter });
