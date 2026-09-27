@@ -261,8 +261,7 @@ export default {
                                 )
                             ) {
                                 await channel.send(
-                                    `
-                                    🏆 **Congrats, You're One of the first 500 OG VILLAGERS!**`
+                                    `\n\n🏆 **Congrats, You're One of the first 500 OG VILLAGERS!**`
                                 );
                             }
                         }
@@ -283,7 +282,7 @@ export default {
                     await user.send(
                         `🏆 **You're an OG!**\n\n` +
                         `Congrats! You're one of the first 500 members of the Filmy Steve Community! 🎉\n\n` +
-                        `You've received the ⭐ OG VILLAGERS role.\n\n` +
+                        `You've received the **OG VILLAGERS** role.\n\n` +
                         `Thanks for being here from the beginning!`
                     );
 
