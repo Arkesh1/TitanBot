@@ -17,7 +17,6 @@ export async function createWarningCard({ user }) {
     const backgroundPath = path.join(
         process.cwd(),
         'src',
-        'assets',
         'warning-bg.png'
     );
 
