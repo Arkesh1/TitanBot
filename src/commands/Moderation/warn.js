@@ -6,7 +6,7 @@ import { WarningService } from '../../services/moderation/warningService.js';
 import { ModerationService } from '../../services/moderation/moderationService.js';
 import { TitanBotError, ErrorTypes } from '../../utils/errorHandler.js';
 import { InteractionHelper } from '../../utils/interactionHelper.js';
-import { createWarningCard } from '../../utils/warningCard.js';
+//import { createWarningCard } from '../../utils/warningCard.js';
 export default {
     data: new SlashCommandBuilder()
         .setName("warn")
@@ -97,21 +97,11 @@ export default {
             }
         });
 
-const warningImage = await createWarningCard({
-    user: target,
-});
-
 await InteractionHelper.safeEditReply(interaction, {
     embeds: [
         successEmbed(
             `⚠️ **Warned** ${target.tag}`,
             `**Reason:** ${reason}\n**Total Warns:** ${totalCount}`,
         ),
-    ],
-    files: [
-        {
-            attachment: warningImage,
-            name: 'warning-card.png',
-        },
     ],
 });
