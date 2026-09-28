@@ -29,6 +29,7 @@ export async function createWarningCard({ user }) {
         await response.arrayBuffer()
     );
 
+    // Size of the user's Minecraft-style head
     const headSize = 190;
 
     const avatar = await sharp(avatarBuffer)
@@ -39,13 +40,13 @@ export async function createWarningCard({ user }) {
         .png()
         .toBuffer();
 
+    // Position of the empty character head
     const headLeft = 650;
     const headTop = 470;
 
     const finalImage = await sharp(backgroundPath)
         .resize(width, height, {
-            fit: 'cover',
-            position: 'centre',
+            fit: 'fill',
         })
         .composite([
             {
