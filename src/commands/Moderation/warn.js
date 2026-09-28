@@ -1,33 +1,50 @@
-import { SlashCommandBuilder, PermissionFlagsBits, PermissionsBitField, ChannelType, MessageFlags } from 'discord.js';
-import { createEmbed, errorEmbed, successEmbed, infoEmbed, warningEmbed } from '../../utils/embeds.js';
+import {
+    SlashCommandBuilder,
+    PermissionFlagsBits,
+    PermissionsBitField,
+    ChannelType,
+    MessageFlags
+} from 'discord.js';
+
+import {
+    createEmbed,
+    errorEmbed,
+    successEmbed,
+    infoEmbed,
+    warningEmbed
+} from '../../utils/embeds.js';
+
 import { logModerationAction } from '../../utils/moderation.js';
 import { logger } from '../../utils/logger.js';
 import { WarningService } from '../../services/moderation/warningService.js';
 import { ModerationService } from '../../services/moderation/moderationService.js';
 import { TitanBotError, ErrorTypes } from '../../utils/errorHandler.js';
 import { InteractionHelper } from '../../utils/interactionHelper.js';
-//import { createWarningCard } from '../../utils/warningCard.js';
+import { createWarningCard } from '../../utils/warningCard.js';
+
 export default {
     data: new SlashCommandBuilder()
-        .setName("warn")
-        .setDescription("Warn a user")
+        .setName('warn')
+        .setDescription('Warn a user')
         .addUserOption((o) =>
             o
-                .setName("target")
+                .setName('target')
                 .setRequired(true)
-                .setDescription("User to warn"),
+                .setDescription('User to warn')
         )
         .addStringOption((o) =>
             o
-                .setName("reason")
+                .setName('reason')
                 .setRequired(true)
-                .setDescription("Reason for the warning"),
+                .setDescription('Reason for the warning')
         )
         .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers),
-    category: "moderation",
+
+    category: 'moderation',
 
     async execute(interaction, config, client) {
         const deferSuccess = await InteractionHelper.safeDefer(interaction);
+
         if (!deferSuccess) {
             logger.warn(`Warn interaction defer failed`, {
                 userId: interaction.user.id,
@@ -37,9 +54,9 @@ export default {
             return;
         }
 
-        const target = interaction.options.getUser("target");
-        const member = interaction.options.getMember("target");
-        const reason = interaction.options.getString("reason");
+        const target = interaction.options.getUser('target');
+        const member = interaction.options.getMember('target');
+        const reason = interaction.options.getString('reason');
         const moderator = interaction.user;
         const guildId = interaction.guildId;
 
@@ -48,7 +65,7 @@ export default {
                 'Missing target user',
                 ErrorTypes.USER_INPUT,
                 'You must specify a user to warn.',
-                { subtype: 'invalid_user' },
+                { subtype: 'invalid_user' }
             );
         }
 
@@ -57,19 +74,23 @@ export default {
                 'Missing warning reason',
                 ErrorTypes.VALIDATION,
                 'You must provide a reason for the warning.',
-                { subtype: 'missing_required' },
+                { subtype: 'missing_required' }
             );
         }
 
         if (!member) {
             throw new TitanBotError(
-                "Target not found",
+                'Target not found',
                 ErrorTypes.USER_INPUT,
-                "The target user is not currently in this server."
+                'The target user is not currently in this server.'
             );
         }
 
-        ModerationService.assertModerationHierarchy(interaction.member, member, 'warn');
+        ModerationService.assertModerationHierarchy(
+            interaction.member,
+            member,
+            'warn'
+        );
 
         const { id, totalCount } = await WarningService.addWarning({
             guildId,
@@ -83,7 +104,7 @@ export default {
             client,
             guild: interaction.guild,
             event: {
-                action: "User Warned",
+                action: 'User Warned',
                 target: `${target.tag} (${target.id})`,
                 executor: `${moderator.tag} (${moderator.id})`,
                 reason,
@@ -97,11 +118,24 @@ export default {
             }
         });
 
-await InteractionHelper.safeEditReply(interaction, {
-    embeds: [
-        successEmbed(
-            `⚠️ **Warned** ${target.tag}`,
-            `**Reason:** ${reason}\n**Total Warns:** ${totalCount}`,
-        ),
-    ],
-});
+        // Create warning image using the target user's Discord avatar
+        const warningImage = await createWarningCard({
+            user: target
+        });
+
+        await InteractionHelper.safeEditReply(interaction, {
+            embeds: [
+                successEmbed(
+                    `⚠️ **Warned** ${target.tag}`,
+                    `**Reason:** ${reason}\n**Total Warns:** ${totalCount}`
+                )
+            ],
+            files: [
+                {
+                    attachment: warningImage,
+                    name: 'warning-card.png'
+                }
+            ]
+        });
+    }
+};
