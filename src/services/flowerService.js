@@ -2,7 +2,7 @@ import { Events } from 'discord.js';
 import path from 'path';
 import { logger } from '../utils/logger.js';
 
-const FLOWER_EMOJI = '🌼';
+const FLOWER_EMOJI = '🌹';
 const THANKS_REGEX = /\b(thanks?|thank\s*you|thx|tysm|ty)\b/i;
 
 // Anti-spam for the automatic rewards (reaction + thanks)
@@ -99,7 +99,7 @@ export function registerFlowerReward(client) {
             await message.reply(
                 flowerPayload(
                     target,
-                    `The Iron Golem gives ${target} a flower for helping out. 🌼`
+                    `The Iron Golem gives ${target} a flower for helping out. 🌹`
                 )
             );
         } catch (err) {
