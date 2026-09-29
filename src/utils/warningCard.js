@@ -5,11 +5,7 @@ export async function createWarningCard({ user }) {
     const width = 1200;
     const height = 675;
 
-    const backgroundPath = path.join(
-        process.cwd(),
-        'src',
-        'warning-bg.png'
-    );
+    const backgroundPath = path.join(process.cwd(), 'src', 'warning-bg.png');
 
     const avatarUrl = user.displayAvatarURL({
         extension: 'png',
@@ -19,42 +15,34 @@ export async function createWarningCard({ user }) {
 
     const response = await fetch(avatarUrl);
     if (!response.ok) {
-        throw new Error(
-            `Failed to download Discord avatar: ${response.status}`
-        );
+        throw new Error(`Failed to download Discord avatar: ${response.status}`);
     }
-
     const avatarBuffer = Buffer.from(await response.arrayBuffer());
 
-    // Size of the user's Minecraft-style head (slightly smaller so it fits the villager)
-    const headSize = 160;
+    // ---- Tweak these to line the avatar up with the villager's head ----
+    const headSize = 210;        // px, avatar width/height
+    const headCenterX = 0.685;   // 0-1, fraction of card width
+    const headCenterY = 0.60;    // 0-1, fraction of card height
+    // --------------------------------------------------------------------
 
     const avatar = await sharp(avatarBuffer)
         .resize(headSize, headSize, {
             fit: 'cover',
             position: 'centre',
+            kernel: 'nearest', // optional: gives a blocky, Minecraft-style look
         })
         .png()
         .toBuffer();
 
-    // Position of the villager's head (tuned for the new non-stretched background)
-    const headLeft = 780;
-    const headTop = 340;
+    const headLeft = Math.round(width * headCenterX - headSize / 2);
+    const headTop = Math.round(height * headCenterY - headSize / 2);
 
-    const finalImage = await sharp(backgroundPath)
+    return sharp(backgroundPath)
         .resize(width, height, {
-            fit: 'cover',
+            fit: 'cover',       // keeps aspect ratio, crops instead of stretching
             position: 'centre',
         })
-        .composite([
-            {
-                input: avatar,
-                left: headLeft,
-                top: headTop,
-            },
-        ])
+        .composite([{ input: avatar, left: headLeft, top: headTop }])
         .png()
         .toBuffer();
-
-    return finalImage;
 }
