@@ -9,7 +9,10 @@ export async function createWarningCard({ user }) {
     const AVATAR_TOP = 475;
     const AVATAR_SIZE = 184;
 
-    const BORDER_COLOR = '#ff3b3b';
+    // Look settings
+    const PIXELS = 48;         // texture resolution: 32 = chunky, 64 = detailed
+    const BRIGHTNESS = 0.93;   // <1 darkens to match the scene
+    const SATURATION = 0.92;
 
     const avatarUrl = user.displayAvatarURL({
         extension: 'png',
@@ -23,24 +26,42 @@ export async function createWarningCard({ user }) {
     }
     const avatarBuffer = Buffer.from(await response.arrayBuffer());
 
-    const avatar = await sharp(avatarBuffer)
-        .resize(AVATAR_SIZE, AVATAR_SIZE, { fit: 'cover', position: 'centre' })
+    // Downscale then upscale with nearest-neighbour for a block-texture look
+    const small = await sharp(avatarBuffer)
+        .resize(PIXELS, PIXELS, { fit: 'cover', position: 'centre' })
         .png()
         .toBuffer();
 
-    // Crisp border on top of the avatar
-    const border = Buffer.from(`
+    const avatar = await sharp(small)
+        .resize(AVATAR_SIZE, AVATAR_SIZE, { kernel: 'nearest' })
+        .modulate({ brightness: BRIGHTNESS, saturation: SATURATION })
+        .png()
+        .toBuffer();
+
+    // Lighting overlay: tint, top-to-bottom shade, edge vignette, thin dark outline
+    const shading = Buffer.from(`
         <svg width="${AVATAR_SIZE}" height="${AVATAR_SIZE}" xmlns="http://www.w3.org/2000/svg">
-            <rect x="2" y="2" width="${AVATAR_SIZE - 4}" height="${AVATAR_SIZE - 4}"
-                  fill="none" stroke="${BORDER_COLOR}" stroke-width="4"/>
-            <rect x="5" y="5" width="${AVATAR_SIZE - 10}" height="${AVATAR_SIZE - 10}"
-                  fill="none" stroke="#fff" stroke-opacity="0.55" stroke-width="1.5"/>
+            <defs>
+                <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0" stop-color="#fff" stop-opacity="0.10"/>
+                    <stop offset="1" stop-color="#000" stop-opacity="0.28"/>
+                </linearGradient>
+                <radialGradient id="v" cx="50%" cy="50%" r="75%">
+                    <stop offset="0.6" stop-color="#000" stop-opacity="0"/>
+                    <stop offset="1" stop-color="#000" stop-opacity="0.35"/>
+                </radialGradient>
+            </defs>
+            <rect width="100%" height="100%" fill="#b07a5a" fill-opacity="0.12"/>
+            <rect width="100%" height="100%" fill="url(#g)"/>
+            <rect width="100%" height="100%" fill="url(#v)"/>
+            <rect x="1" y="1" width="${AVATAR_SIZE - 2}" height="${AVATAR_SIZE - 2}"
+                  fill="none" stroke="#000" stroke-opacity="0.45" stroke-width="2"/>
         </svg>`);
 
     return sharp(backgroundPath)
         .composite([
             { input: avatar, left: AVATAR_LEFT, top: AVATAR_TOP },
-            { input: border, left: AVATAR_LEFT, top: AVATAR_TOP },
+            { input: shading, left: AVATAR_LEFT, top: AVATAR_TOP },
         ])
         .png()
         .toBuffer();
