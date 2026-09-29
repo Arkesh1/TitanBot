@@ -10,7 +10,7 @@ export async function createWarningCard({ user }) {
     const AVATAR_SIZE = 184;
 
     // Look settings
-    const PIXELS = 48;         // texture resolution: 32 = chunky, 64 = detailed
+    const PIXELS = 64;         // texture resolution: 32 = chunky, 64 = detailed
     const BRIGHTNESS = 0.93;   // <1 darkens to match the scene
     const SATURATION = 0.92;
 
