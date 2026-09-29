@@ -4,15 +4,12 @@ import path from 'path';
 export async function createWarningCard({ user }) {
     const backgroundPath = path.join(process.cwd(), 'src', 'warning-bg.png');
 
-    // Exact avatar box measured from your mockup (in background pixels)
-    const AVATAR_LEFT = 824;
-    const AVATAR_TOP = 499;
-    const AVATAR_SIZE = 187;
+    // Avatar box on the 905x905 background (villager's head)
+    const AVATAR_LEFT = 625;
+    const AVATAR_TOP = 475;
+    const AVATAR_SIZE = 184;
 
-    // Glow settings
-    const GLOW_COLOR = '#ff3b3b'; // warning red, try '#ffc400' or '#00e5ff'
-    const GLOW_PAD = 45;          // extra room around the avatar for the glow
-    const GLOW_BLUR = 12;         // higher = softer, wider glow
+    const BORDER_COLOR = '#ff3b3b';
 
     const avatarUrl = user.displayAvatarURL({
         extension: 'png',
@@ -31,13 +28,11 @@ export async function createWarningCard({ user }) {
         .png()
         .toBuffer();
 
-
-
-    // Crisp border ON TOP of the avatar (drawn just inside its edges)
+    // Crisp border on top of the avatar
     const border = Buffer.from(`
         <svg width="${AVATAR_SIZE}" height="${AVATAR_SIZE}" xmlns="http://www.w3.org/2000/svg">
             <rect x="2" y="2" width="${AVATAR_SIZE - 4}" height="${AVATAR_SIZE - 4}"
-                  fill="none" stroke="${GLOW_COLOR}" stroke-width="4"/>
+                  fill="none" stroke="${BORDER_COLOR}" stroke-width="4"/>
             <rect x="5" y="5" width="${AVATAR_SIZE - 10}" height="${AVATAR_SIZE - 10}"
                   fill="none" stroke="#fff" stroke-opacity="0.55" stroke-width="1.5"/>
         </svg>`);
