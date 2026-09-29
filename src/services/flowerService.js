@@ -2,44 +2,92 @@ import { Events } from 'discord.js';
 import path from 'path';
 import { logger } from '../utils/logger.js';
 
-// Any of these reactions triggers a flower
 const FLOWER_EMOJIS = ['🌼', '🌸', '🌺', '🌻', '🌷', '💐'];
-const THANKS_REGEX = /\b(thanks?|thank\s*you|thx|tysm|ty)\b/i;
 
-const rewardedMessages = new Set(); // one flower per message, so 5 reactions don't send 5 flowers
+const THANKS_REGEX =
+    /\b(thanks?|thank\s*you|thank\s*u|thx|tysm|ty)\b/i;
+
+// One automatic flower per message
+const rewardedMessages = new Set();
+
+// Prevent the service from registering duplicate listeners
+const registeredClients = new WeakSet();
 
 export function flowerPayload(target, text) {
     return {
         content: text,
         files: [
             {
-                attachment: path.join(process.cwd(), 'src', 'golem-flower.png'),
+                attachment: path.join(
+                    process.cwd(),
+                    'src',
+                    'golem-flower.png'
+                ),
                 name: 'golem-flower.png'
             }
         ],
-        allowedMentions: { users: target ? [target.id] : [], repliedUser: false }
+        allowedMentions: {
+            users: target ? [target.id] : [],
+            repliedUser: false
+        }
     };
 }
 
 export function registerFlowerReward(client) {
-    logger.info('Flower rewards registered');
+    // Don't register the listeners more than once
+    if (registeredClients.has(client)) {
+        return;
+    }
 
-    // 1) Flower emoji reaction on someone's message
+    registeredClients.add(client);
+
+    logger.info('🌼 Flower reward system registered');
+
+    /*
+     * ==========================================
+     * FLOWER REACTION
+     * ==========================================
+     */
+
     client.on(Events.MessageReactionAdd, async (reaction, user) => {
         try {
-            console.log('[flower] reaction seen:', reaction.emoji.name, 'by', user.tag);
-
             if (user.bot) return;
-            if (reaction.partial) await reaction.fetch();
-            if (reaction.message.partial) await reaction.message.fetch();
+
+            // Fetch partial reaction/message when necessary
+            if (reaction.partial) {
+                await reaction.fetch();
+            }
+
+            if (reaction.message.partial) {
+                await reaction.message.fetch();
+            }
 
             const message = reaction.message;
-            if (!FLOWER_EMOJIS.includes(reaction.emoji.name)) return;
-            if (!message.guild || !message.author || message.author.bot) return;
-            if (message.author.id === user.id) return;    // no self-flowers
-            if (rewardedMessages.has(message.id)) return; // already rewarded
+
+            if (!message.guild) return;
+            if (!message.author) return;
+            if (message.author.bot) return;
+
+            // Only flower reactions trigger the reward
+            if (!FLOWER_EMOJIS.includes(reaction.emoji.name)) {
+                return;
+            }
+
+            // Don't reward someone for reacting to their own message
+            if (message.author.id === user.id) {
+                return;
+            }
+
+            // Already rewarded
+            if (rewardedMessages.has(message.id)) {
+                return;
+            }
 
             rewardedMessages.add(message.id);
+
+            logger.info(
+                `🌼 ${user.tag} reacted to ${message.author.tag}'s message`
+            );
 
             await message.reply(
                 flowerPayload(
@@ -47,32 +95,87 @@ export function registerFlowerReward(client) {
                     `The Iron Golem gives ${message.author} a flower for the great work. 🌼`
                 )
             );
-        } catch (err) {
-            logger.error('Flower reaction error:', err);
+        } catch (error) {
+            logger.error('Flower reaction error:', error);
         }
     });
 
-    // 2) "Thanks" messages
+    /*
+     * ==========================================
+     * THANKS MESSAGE
+     * ==========================================
+     */
+
     client.on(Events.MessageCreate, async (message) => {
         try {
-            if (message.author.bot || !message.guild) return;
-            console.log('[flower] message seen, content length:', message.content.length);
+            if (!message.guild) return;
+            if (message.author.bot) return;
 
-            if (!THANKS_REGEX.test(message.content)) return;
+            const content = message.content?.trim();
 
-            // Who is being thanked? First mention, otherwise the author of the replied-to message
-            let target = message.mentions.users.find(
-                (u) => !u.bot && u.id !== message.author.id
+            if (!content) return;
+
+            if (!THANKS_REGEX.test(content)) {
+                return;
+            }
+
+            logger.info(
+                `🙏 Thanks detected from ${message.author.tag}: ${content}`
             );
 
+            let target = null;
+
+            /*
+             * First: look for a mentioned user.
+             *
+             * Example:
+             * thanks @Steve
+             */
+
+            target = message.mentions.users.find(
+                (user) =>
+                    !user.bot &&
+                    user.id !== message.author.id
+            );
+
+            /*
+             * Second: if the message is a reply,
+             * find the author of the replied message.
+             *
+             * Example:
+             *
+             * Steve: Here is the solution!
+             *
+             * User: thanks!
+             */
+
             if (!target && message.reference?.messageId) {
-                const replied = await message.fetchReference().catch(() => null);
-                if (replied && !replied.author.bot && replied.author.id !== message.author.id) {
-                    target = replied.author;
+                try {
+                    const repliedMessage =
+                        await message.fetchReference();
+
+                    if (
+                        repliedMessage?.author &&
+                        !repliedMessage.author.bot &&
+                        repliedMessage.author.id !== message.author.id
+                    ) {
+                        target = repliedMessage.author;
+                    }
+                } catch (error) {
+                    logger.debug(
+                        'Could not fetch replied message for flower reward'
+                    );
                 }
             }
 
-            if (!target) return;
+            // Nobody to give the flower to
+            if (!target) {
+                return;
+            }
+
+            logger.info(
+                `🌼 ${message.author.tag} thanked ${target.tag}`
+            );
 
             await message.reply(
                 flowerPayload(
@@ -80,8 +183,8 @@ export function registerFlowerReward(client) {
                     `The Iron Golem gives ${target} a flower for helping out. 🌼`
                 )
             );
-        } catch (err) {
-            logger.error('Flower thanks error:', err);
+        } catch (error) {
+            logger.error('Flower thanks error:', error);
         }
     });
 }
