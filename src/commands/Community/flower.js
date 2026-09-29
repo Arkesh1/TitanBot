@@ -1,7 +1,7 @@
 import { SlashCommandBuilder, AttachmentBuilder, Events } from 'discord.js';
 import path from 'path';
 
-const FLOWER_EMOJI = '🌼';
+const FLOWER_EMOJI = '🌹';
 const THANKS_REGEX = /\b(thanks?|thank\s*you|thx|tysm|ty)\b/i;
 
 // Anti-spam for the automatic rewards (reaction + thanks)
@@ -54,7 +54,7 @@ export const data = new SlashCommandBuilder()
 
 export async function execute(interaction) {
     const target = interaction.options.getUser('user');
-    const text = target ? `The Iron Golem gives ${target} a flower. 🌼` : undefined;
+    const text = target ? `The Iron Golem gives ${target} a flower. 🌹` : undefined;
     await interaction.reply(flowerPayload(target, text));
 }
 
