@@ -2,36 +2,11 @@ import { Events } from 'discord.js';
 import path from 'path';
 import { logger } from '../utils/logger.js';
 
-const FLOWER_EMOJI = '🌹';
+// Any of these reactions triggers a flower
+const FLOWER_EMOJIS = ['🌼', '🌸', '🌺', '🌻', '🌷', '💐'];
 const THANKS_REGEX = /\b(thanks?|thank\s*you|thx|tysm|ty)\b/i;
 
-// Anti-spam for the automatic rewards (reaction + thanks)
-const TARGET_COOLDOWN_MS = 10 * 60 * 1000; // 10 min between flowers per person
-const DAILY_CAP = 3;                       // max automatic flowers per person per day
-
-const lastReward = new Map();       // userId -> timestamp
-const dailyCount = new Map();       // userId -> { day, count }
-const rewardedMessages = new Set(); // message IDs already rewarded via reaction
-
-function canReward(userId) {
-    const now = Date.now();
-    if (now - (lastReward.get(userId) ?? 0) < TARGET_COOLDOWN_MS) return false;
-
-    const today = new Date().toDateString();
-    const daily = dailyCount.get(userId);
-    if (daily && daily.day === today && daily.count >= DAILY_CAP) return false;
-    return true;
-}
-
-function markRewarded(userId) {
-    const today = new Date().toDateString();
-    const daily = dailyCount.get(userId);
-    dailyCount.set(userId, {
-        day: today,
-        count: daily && daily.day === today ? daily.count + 1 : 1
-    });
-    lastReward.set(userId, Date.now());
-}
+const rewardedMessages = new Set(); // one flower per message, so 5 reactions don't send 5 flowers
 
 export function flowerPayload(target, text) {
     return {
@@ -47,22 +22,24 @@ export function flowerPayload(target, text) {
 }
 
 export function registerFlowerReward(client) {
-    // 1) A single 🌼 reaction on someone's message
+    logger.info('Flower rewards registered');
+
+    // 1) Flower emoji reaction on someone's message
     client.on(Events.MessageReactionAdd, async (reaction, user) => {
         try {
+            console.log('[flower] reaction seen:', reaction.emoji.name, 'by', user.tag);
+
             if (user.bot) return;
             if (reaction.partial) await reaction.fetch();
             if (reaction.message.partial) await reaction.message.fetch();
 
             const message = reaction.message;
-            if (reaction.emoji.name !== FLOWER_EMOJI) return;
+            if (!FLOWER_EMOJIS.includes(reaction.emoji.name)) return;
             if (!message.guild || !message.author || message.author.bot) return;
-            if (message.author.id === user.id) return;     // no self-flowers
-            if (rewardedMessages.has(message.id)) return;  // one flower per message
-            if (!canReward(message.author.id)) return;
+            if (message.author.id === user.id) return;    // no self-flowers
+            if (rewardedMessages.has(message.id)) return; // already rewarded
 
             rewardedMessages.add(message.id);
-            markRewarded(message.author.id);
 
             await message.reply(
                 flowerPayload(
@@ -79,6 +56,8 @@ export function registerFlowerReward(client) {
     client.on(Events.MessageCreate, async (message) => {
         try {
             if (message.author.bot || !message.guild) return;
+            console.log('[flower] message seen, content length:', message.content.length);
+
             if (!THANKS_REGEX.test(message.content)) return;
 
             // Who is being thanked? First mention, otherwise the author of the replied-to message
@@ -93,13 +72,12 @@ export function registerFlowerReward(client) {
                 }
             }
 
-            if (!target || !canReward(target.id)) return;
-            markRewarded(target.id);
+            if (!target) return;
 
             await message.reply(
                 flowerPayload(
                     target,
-                    `The Iron Golem gives ${target} a flower for helping out. 🌹`
+                    `The Iron Golem gives ${target} a flower for helping out. 🌼`
                 )
             );
         } catch (err) {
