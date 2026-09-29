@@ -18,19 +18,16 @@ export async function createWarningCard({ user }) {
     });
 
     const response = await fetch(avatarUrl);
-
     if (!response.ok) {
         throw new Error(
             `Failed to download Discord avatar: ${response.status}`
         );
     }
 
-    const avatarBuffer = Buffer.from(
-        await response.arrayBuffer()
-    );
+    const avatarBuffer = Buffer.from(await response.arrayBuffer());
 
-    // Size of the user's Minecraft-style head
-    const headSize = 190;
+    // Size of the user's Minecraft-style head (slightly smaller so it fits the villager)
+    const headSize = 160;
 
     const avatar = await sharp(avatarBuffer)
         .resize(headSize, headSize, {
@@ -40,13 +37,14 @@ export async function createWarningCard({ user }) {
         .png()
         .toBuffer();
 
-    // Position of the empty character head
-    const headLeft = 650;
-    const headTop = 470;
+    // Position of the villager's head (tuned for the new non-stretched background)
+    const headLeft = 780;
+    const headTop = 340;
 
     const finalImage = await sharp(backgroundPath)
         .resize(width, height, {
-            fit: 'fill',
+            fit: 'cover',
+            position: 'centre',
         })
         .composite([
             {
