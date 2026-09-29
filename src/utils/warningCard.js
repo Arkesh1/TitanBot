@@ -11,8 +11,8 @@ export async function createWarningCard({ user }) {
 
     // Look settings
     const PIXELS = 64;         // texture resolution: 32 = chunky, 64 = detailed
-    const BRIGHTNESS = 0.93;   // <1 darkens to match the scene
-    const SATURATION = 0.92;
+    const BRIGHTNESS = 0.95;   // <1 darkens to match the scene
+    const SATURATION = 0.95;
 
     const avatarUrl = user.displayAvatarURL({
         extension: 'png',
