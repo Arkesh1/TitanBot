@@ -1,7 +1,11 @@
 import { SlashCommandBuilder } from 'discord.js';
 import { InteractionHelper } from '../../utils/interactionHelper.js';
 import { logger } from '../../utils/logger.js';
-import { flowerPayload } from '../../services/flowerService.js';
+
+import {
+    flowerPayload,
+    registerFlowerReward
+} from '../../services/flowerService.js';
 
 export default {
     data: new SlashCommandBuilder()
@@ -17,7 +21,16 @@ export default {
     category: 'community',
 
     async execute(interaction, config, client) {
-        const deferSuccess = await InteractionHelper.safeDefer(interaction);
+        /*
+         * Make sure the automatic flower system is running.
+         *
+         * The WeakSet inside flowerService.js prevents
+         * duplicate listeners if /flower is used multiple times.
+         */
+        registerFlowerReward(client);
+
+        const deferSuccess =
+            await InteractionHelper.safeDefer(interaction);
 
         if (!deferSuccess) {
             logger.warn('Flower interaction defer failed', {
@@ -25,13 +38,15 @@ export default {
                 guildId: interaction.guildId,
                 commandName: 'flower'
             });
+
             return;
         }
 
         const target = interaction.options.getUser('user');
+
         const text = target
             ? `The Iron Golem gives ${target} a flower. 🌼`
-            : undefined;
+            : 'The Iron Golem gives you a flower. 🌼';
 
         await InteractionHelper.safeEditReply(
             interaction,
