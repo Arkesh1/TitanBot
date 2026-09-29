@@ -4,9 +4,15 @@ import path from 'path';
 export async function createWarningCard({ user }) {
     const backgroundPath = path.join(process.cwd(), 'src', 'warning-bg.png');
 
-    const bgMeta = await sharp(backgroundPath).metadata();
-    const width = 1200;
-    const height = Math.round(width * (bgMeta.height / bgMeta.width));
+    // Exact avatar box measured from your mockup (in background pixels)
+    const AVATAR_LEFT = 824;
+    const AVATAR_TOP = 499;
+    const AVATAR_SIZE = 187;
+
+    // Glow settings
+    const GLOW_COLOR = '#ff3b3b'; // warning red, try '#ffc400' or '#00e5ff'
+    const GLOW_PAD = 45;          // extra room around the avatar for the glow
+    const GLOW_BLUR = 12;         // higher = softer, wider glow
 
     const avatarUrl = user.displayAvatarURL({
         extension: 'png',
@@ -20,78 +26,40 @@ export async function createWarningCard({ user }) {
     }
     const avatarBuffer = Buffer.from(await response.arrayBuffer());
 
-    // ---- Tweak these ----
-    const headCenterX = 0.655;   // center of the FRONT face (fraction of width)
-    const headCenterY = 0.585;   // center of the FRONT face (fraction of height)
-    const faceWRatio = 0.19;     // front face width (fraction of width)
-    const faceHRatio = 1.2;      // front face height relative to its width
-    const depthRatio = 0.28;     // how thick the block is (fraction of face width)
-    const pixels = 16;           // pixelation level, lower = blockier
-    // ---------------------
-
-    const faceW = Math.round(width * faceWRatio);
-    const faceH = Math.round(faceW * faceHRatio);
-    const depth = Math.round(faceW * depthRatio);
-    const slope = 0.5;                       // how steeply the depth recedes upward
-    const rise = Math.round(depth * slope);  // vertical offset of the depth faces
-
-    // Pixelated base so the head looks Minecraft-style
-    const pixelated = await sharp(avatarBuffer)
-        .resize(pixels, pixels, { fit: 'cover', position: 'centre' })
+    const avatar = await sharp(avatarBuffer)
+        .resize(AVATAR_SIZE, AVATAR_SIZE, { fit: 'cover', position: 'centre' })
         .png()
         .toBuffer();
 
-    const scale = (w, h) =>
-        sharp(pixelated)
-            .resize(w, h, { fit: 'fill', kernel: 'nearest' })
-            .png()
-            .toBuffer();
-
-    const transparent = { r: 0, g: 0, b: 0, alpha: 0 };
-    const nearest = sharp.interpolators.nearest;
-
-    // Front face with a subtle gradient and dark outline
-    const shade = Buffer.from(`
-        <svg width="${faceW}" height="${faceH}" xmlns="http://www.w3.org/2000/svg">
+    // Soft glow that sits BEHIND the avatar
+    const glowSize = AVATAR_SIZE + GLOW_PAD * 2;
+    const glow = Buffer.from(`
+        <svg width="${glowSize}" height="${glowSize}" xmlns="http://www.w3.org/2000/svg">
             <defs>
-                <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0" stop-color="#fff" stop-opacity="0.18"/>
-                    <stop offset="1" stop-color="#000" stop-opacity="0.25"/>
-                </linearGradient>
+                <filter id="blur" x="-50%" y="-50%" width="200%" height="200%">
+                    <feGaussianBlur stdDeviation="${GLOW_BLUR}"/>
+                </filter>
             </defs>
-            <rect width="100%" height="100%" fill="url(#g)"/>
-            <rect x="1" y="1" width="${faceW - 2}" height="${faceH - 2}"
-                  fill="none" stroke="#000" stroke-opacity="0.6" stroke-width="2"/>
+            <rect x="${GLOW_PAD}" y="${GLOW_PAD}" width="${AVATAR_SIZE}" height="${AVATAR_SIZE}"
+                  fill="none" stroke="${GLOW_COLOR}" stroke-width="14" filter="url(#blur)"/>
+            <rect x="${GLOW_PAD}" y="${GLOW_PAD}" width="${AVATAR_SIZE}" height="${AVATAR_SIZE}"
+                  fill="none" stroke="${GLOW_COLOR}" stroke-width="6" filter="url(#blur)"/>
         </svg>`);
 
-    const front = await sharp(await scale(faceW, faceH))
-        .composite([{ input: shade }])
-        .png()
-        .toBuffer();
-
-    // Right side face: sheared up and darkened
-    const side = await sharp(await scale(depth, faceH))
-        .affine([[1, 0], [-slope, 1]], { background: transparent, interpolator: nearest })
-        .modulate({ brightness: 0.55 })
-        .png()
-        .toBuffer();
-
-    // Top face: sheared sideways and lightened
-    const top = await sharp(await scale(faceW, rise))
-        .affine([[1, -depth / rise], [0, 1]], { background: transparent, interpolator: nearest })
-        .modulate({ brightness: 1.2 })
-        .png()
-        .toBuffer();
-
-    const left = Math.round(width * headCenterX - faceW / 2);
-    const topPos = Math.round(height * headCenterY - faceH / 2);
+    // Crisp border ON TOP of the avatar (drawn just inside its edges)
+    const border = Buffer.from(`
+        <svg width="${AVATAR_SIZE}" height="${AVATAR_SIZE}" xmlns="http://www.w3.org/2000/svg">
+            <rect x="2" y="2" width="${AVATAR_SIZE - 4}" height="${AVATAR_SIZE - 4}"
+                  fill="none" stroke="${GLOW_COLOR}" stroke-width="4"/>
+            <rect x="5" y="5" width="${AVATAR_SIZE - 10}" height="${AVATAR_SIZE - 10}"
+                  fill="none" stroke="#fff" stroke-opacity="0.55" stroke-width="1.5"/>
+        </svg>`);
 
     return sharp(backgroundPath)
-        .resize(width, height)
         .composite([
-            { input: top, left, top: topPos - rise },
-            { input: side, left: left + faceW, top: topPos - rise },
-            { input: front, left, top: topPos },
+            { input: glow, left: AVATAR_LEFT - GLOW_PAD, top: AVATAR_TOP - GLOW_PAD },
+            { input: avatar, left: AVATAR_LEFT, top: AVATAR_TOP },
+            { input: border, left: AVATAR_LEFT, top: AVATAR_TOP },
         ])
         .png()
         .toBuffer();
