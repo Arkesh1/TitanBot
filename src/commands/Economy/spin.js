@@ -88,7 +88,7 @@ async function createSpinGif(resultMultiplier) {
             r: 0,
             g: 0,
             b: 0,
-            alpha: 0
+            alpha: 1
           }
         })
         .png()
@@ -150,13 +150,16 @@ async function createSpinGif(resultMultiplier) {
             r: 0,
             g: 0,
             b: 0,
-            alpha: 0
+            alpha: 1
           }
         })
         .png()
         .toBuffer();
 
-    const finalFrame =
+    /*
+     * Composite the fixed arrow.
+     */
+    const raw =
       await sharp(croppedWheel)
         .composite([
           {
@@ -164,22 +167,45 @@ async function createSpinGif(resultMultiplier) {
             gravity: 'north'
           }
         ])
-        .ensureAlpha()
+        .removeAlpha()
         .raw()
         .toBuffer({
           resolveWithObject: true
         });
 
     /*
-     * Create the GIF frame with the correct
-     * RGBA bitmap and frame delay.
+     * Reduce RGB to a fixed 128-color palette.
+     *
+     * R: 2 bits
+     * G: 3 bits
+     * B: 2 bits
+     *
+     * 4 × 8 × 4 = 128 colors.
+     *
+     * This is intentionally done manually because
+     * gifwrap's quantizers are too slow for this animation.
      */
+    const data = raw.data;
+
+    for (let p = 0; p < data.length; p += 3) {
+      data[p] =
+        Math.round(data[p] / 85) * 85;
+
+      data[p + 1] =
+        Math.round(data[p + 1] / 36) * 36;
+
+      data[p + 2] =
+        Math.round(data[p + 2] / 85) * 85;
+    }
+
     const frame =
       new GifFrame(
         {
-          width: finalFrame.info.width,
-          height: finalFrame.info.height,
-          data: finalFrame.data
+          width: raw.info.width,
+          height: raw.info.height,
+          data: Buffer.from(
+            data
+          )
         },
         {
           delayCentisecs: FRAME_DELAY
@@ -190,23 +216,7 @@ async function createSpinGif(resultMultiplier) {
   }
 
   /*
-   * Quantize the ACTUAL GifFrame pixels.
-   *
-   * 128 colors is enough for the wheel and
-   * considerably faster than Wu 256.
-   */
-  GifUtil.quantizeSorokin(
-    frames,
-    128,
-    'min-pop',
-    {
-      ditherAlgorithm: 'FloydSteinberg',
-      serpentine: true
-    }
-  );
-
-  /*
-   * Hold the final winning position.
+   * Hold the winning position.
    */
   const winningFrame =
     frames[frames.length - 1];
@@ -218,7 +228,10 @@ async function createSpinGif(resultMultiplier) {
   }
 
   /*
-   * Encode the already-quantized frames.
+   * No quantization here.
+   *
+   * The frames already contain only
+   * 128 possible RGB colors.
    */
   const gif =
     await GifUtil.write(
