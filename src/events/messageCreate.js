@@ -1,5 +1,6 @@
 import { Events } from 'discord.js';
 import { logger } from '../utils/logger.js';
+import EconomyService from '../services/economyService.js';
 import { getLevelingConfig, getUserLevelData } from '../services/leveling/leveling.js';
 import { addXp } from '../services/leveling/xpSystem.js';
 import { checkRateLimit } from '../utils/rateLimiter.js';
@@ -36,7 +37,7 @@ export default {
       }
 
       await handlePrefixCommand(message, client);
-
+      await handleRandomEmeraldReward(message, client);
       await handleLeveling(message, client);
     } catch (error) {
       logger.error('Error in messageCreate event:', error);
@@ -250,4 +251,34 @@ async function handleLeveling(message, client) {
   } catch (error) {
     logger.error('Error handling leveling for message:', error);
   }
+
+  async function handleRandomEmeraldReward(message, client) {
+  try {
+    if (message.channel.name !== '💬 │ general') {
+      return;
+    }
+
+    // 20% chance
+    if (Math.random() > 0.20) {
+      return;
+    }
+
+    const rewards = [5, 10, 15, 25];
+    const amount = rewards[Math.floor(Math.random() * rewards.length)];
+
+    await EconomyService.addEmeralds(
+      client,
+      message.guild.id,
+      message.author.id,
+      amount,
+      'chat'
+    );
+
+    logger.debug(
+      `Awarded ${amount} Emeralds to ${message.author.tag} for chatting`
+    );
+  } catch (error) {
+    logger.error('Error handling random Emerald reward:', error);
+  }
+}
 }
