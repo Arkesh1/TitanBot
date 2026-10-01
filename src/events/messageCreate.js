@@ -301,6 +301,15 @@ async function handleRandomEmeraldReward(message, client) {
       return;
     }
 
+    const cooldownKey = `${message.guild.id}:${message.author.id}`;
+    const now = Date.now();
+    const lastReward = emeraldRewardCooldowns.get(cooldownKey) || 0;
+
+    // 1 minute cooldown after earning Emeralds
+    if (now - lastReward < EMERALD_REWARD_COOLDOWN_MS) {
+      return;
+    }
+
     // 20% chance
     if (Math.random() > 0.20) {
       return;
@@ -317,8 +326,14 @@ async function handleRandomEmeraldReward(message, client) {
       'chat'
     );
 
+    emeraldRewardCooldowns.set(cooldownKey, now);
+
     await message.channel.send(
-      `**${message.author} earned ${amount} Emeralds!**`
+      `💎 **${message.author} earned ${amount} Emeralds!**`
+    );
+
+    logger.debug(
+      `Added ${amount} Emeralds to ${message.author.tag} for chatting`
     );
   } catch (error) {
     logger.error(
