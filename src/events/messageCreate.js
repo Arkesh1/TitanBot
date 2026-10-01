@@ -252,33 +252,32 @@ async function handleLeveling(message, client) {
     logger.error('Error handling leveling for message:', error);
   }
 
-  async function handleRandomEmeraldReward(message, client) {
+async function handleRandomEmeraldReward(message, client) {
   try {
+    logger.info(`Emerald test: message received in #${message.channel.name}`);
+
     if (message.channel.name !== '💬 │ general') {
+      logger.info(`Emerald test: wrong channel`);
       return;
     }
 
-    // 20% chance
-    if (Math.random() > 0.20) {
-      return;
-    }
+    // TEMPORARY: reward every message
+    const amount = 10;
 
-    const rewards = [5, 10, 15, 25];
-    const amount = rewards[Math.floor(Math.random() * rewards.length)];
-
-    await EconomyService.addEmeralds(
+    const result = await EconomyService.addEmeralds(
       client,
       message.guild.id,
       message.author.id,
       amount,
-      'chat'
+      'chat-test'
     );
 
-    logger.debug(
-      `Awarded ${amount} Emeralds to ${message.author.tag} for chatting`
+    logger.info(
+      `Emerald test: added ${amount} Emeralds to ${message.author.tag}`
     );
+
   } catch (error) {
-    logger.error('Error handling random Emerald reward:', error);
+    logger.error('Emerald reward error:', error);
   }
 }
 }
