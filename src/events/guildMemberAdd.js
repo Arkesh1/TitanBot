@@ -8,6 +8,7 @@ import { getServerCounters, updateCounter } from '../services/serverstatsService
 import { setBirthday as dbSetBirthday } from '../utils/database.js';
 import { logger } from '../utils/logger.js';
 import { createWelcomeCard } from '../utils/welcomeCard.js';
+import EconomyService from '../services/economyService.js';
 
 export default {
     name: Events.GuildMemberAdd,
@@ -29,6 +30,119 @@ export default {
 
             const welcomeChannelId = welcomeConfig?.channelId;
 
+            // =====================================================
+            // INVITE REWARD
+            // =====================================================
+
+            if (!user.bot) {
+                try {
+                    const client = member.client;
+
+                    const oldInvites =
+                        client.inviteCache?.get(guild.id) ||
+                        new Map();
+
+                    const newInvites =
+                        await guild.invites.fetch();
+
+                    let usedInvite = null;
+
+                    for (const invite of newInvites.values()) {
+                        const oldInvite =
+                            oldInvites.get(invite.code);
+
+                        const oldUses =
+                            oldInvite?.uses || 0;
+
+                        const newUses =
+                            invite.uses || 0;
+
+                        if (newUses > oldUses) {
+                            usedInvite = invite;
+                            break;
+                        }
+                    }
+
+                    // -------------------------------------------------
+                    // UPDATE INVITE CACHE
+                    // -------------------------------------------------
+
+                    const updatedInviteData = new Map();
+
+                    for (const invite of newInvites.values()) {
+                        updatedInviteData.set(
+                            invite.code,
+                            {
+                                uses: invite.uses || 0,
+                                inviterId:
+                                    invite.inviter?.id || null
+                            }
+                        );
+                    }
+
+                    if (client.inviteCache) {
+                        client.inviteCache.set(
+                            guild.id,
+                            updatedInviteData
+                        );
+                    }
+
+                    // -------------------------------------------------
+                    // REWARD INVITER
+                    // -------------------------------------------------
+
+                    if (
+                        usedInvite &&
+                        usedInvite.inviter &&
+                        usedInvite.inviter.id !== user.id
+                    ) {
+                        const inviterId =
+                            usedInvite.inviter.id;
+
+                        await EconomyService.addEmeralds(
+                            client,
+                            guild.id,
+                            inviterId,
+                            100,
+                            'invite-reward'
+                        );
+
+                        logger.info(
+                            `Awarded 100 Emeralds to ${inviterId} for inviting ${user.id} in guild ${guild.id}`
+                        );
+
+                        // -------------------------------------------------
+                        // PUBLIC INVITE REWARD MESSAGE
+                        // -------------------------------------------------
+
+                   try {
+    const channel = guild.channels.cache.find(
+        channel => channel.name === '📥│invite-rewards'
+    );
+
+    if (channel?.isTextBased()) {
+        const permissions =
+            channel.permissionsFor(guild.members.me);
+
+        if (
+            permissions?.has(
+                PermissionFlagsBits.ViewChannel
+            ) &&
+            permissions?.has(
+                PermissionFlagsBits.SendMessages
+            )
+        ) {
+            await channel.send(
+                `💎 <@${inviterId}> earned **100 Emeralds** for inviting ${user}!`
+            );
+        }
+    }
+} catch (error) {
+    logger.debug(
+        'Could not send invite reward message:',
+        error
+    );
+}
             // =====================================================
             // WELCOME MESSAGE + WELCOME CARD
             // =====================================================
