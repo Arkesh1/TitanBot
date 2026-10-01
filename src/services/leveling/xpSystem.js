@@ -131,7 +131,9 @@ async function sendLevelUpAnnouncement(guild, member, levelData, config) {
       .replace(/{xp}/g, levelData.xp)
       .replace(/{xpNeeded}/g, getXpForLevel(levelData.level + 1));
 
-    await levelUpChannel.send(message).catch(error => {
+    await levelUpChannel.send(
+      `${message}\n💎 **You earned 50 Emeralds!**`
+    ).catch(error => {
       logger.error(`Failed to send level up message in channel ${levelUpChannel.id}:`, error);
     });
   } catch (error) {
