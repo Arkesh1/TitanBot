@@ -468,9 +468,23 @@ async function handleLeveling(message, client) {
     );
 
     if (result?.leveledUp) {
-      logger.info(
-        `${message.author.tag} leveled up to level ${result.level} in ${message.guild.name}`
-      );
+      const emeraldReward = 50;
+
+    await EconomyService.addEmeralds(
+        client,
+        message.guild.id,
+        message.author.id,
+        emeraldReward,
+        'level-up'
+    );
+
+    await message.channel.send(
+        `🎉 **${message.author} reached Level ${result.level}!**\n💎 You earned **${emeraldReward} Emeralds!**`
+    );
+
+    logger.info(
+        `User ${message.author.tag} reached level ${result.level} and received ${emeraldReward} Emeralds`
+    );
     }
   } catch (error) {
     logger.error(
