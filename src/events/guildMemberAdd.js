@@ -138,7 +138,7 @@ export default {
                                     )
                                 ) {
                                     await channel.send(
-                                        `💎 <@${inviterId}> earned **100 Emeralds** for inviting ${user}!`
+                                        `<@${inviterId}> earned **100 Emeralds** for inviting ${user}!`
                                     );
                                 }
                             }
