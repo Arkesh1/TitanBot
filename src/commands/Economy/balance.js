@@ -1,14 +1,36 @@
-import { SlashCommandBuilder } from 'discord.js';
-import { createEmbed, errorEmbed, successEmbed, infoEmbed, warningEmbed } from '../../utils/embeds.js';
-import { getEconomyData, getMaxBankCapacity } from '../../utils/economy.js';
-import { withErrorHandling, createError, ErrorTypes } from '../../utils/errorHandler.js';
-import { logger } from '../../utils/logger.js';
-import { InteractionHelper } from '../../utils/interactionHelper.js';
+import {
+    SlashCommandBuilder,
+    AttachmentBuilder
+} from 'discord.js';
+
+import {
+    createEmbed
+} from '../../utils/embeds.js';
+
+import {
+    getEconomyData
+} from '../../utils/economy.js';
+
+import {
+    withErrorHandling,
+    createError,
+    ErrorTypes
+} from '../../utils/errorHandler.js';
+
+import {
+    logger
+} from '../../utils/logger.js';
+
+import {
+    InteractionHelper
+} from '../../utils/interactionHelper.js';
+
+import path from 'path';
 
 export default {
     data: new SlashCommandBuilder()
         .setName('balance')
-        .setDescription("Check your or someone else's balance")
+        .setDescription("Check your or someone else's Emerald balance")
         .addUserOption(option =>
             option
                 .setName('user')
@@ -20,68 +42,83 @@ export default {
         const deferred = await InteractionHelper.safeDefer(interaction);
         if (!deferred) return;
 
-        const userOption = interaction.options.getUser("user");
+        const userOption = interaction.options.getUser('user');
         const targetUser = userOption || interaction.user;
         const guildId = interaction.guildId;
 
-        logger.info(`[ECONOMY] Balance check - userOption: ${userOption?.id || 'null'}, targetUser: ${targetUser.id}, guildId: ${guildId}, isPrefix: ${!!interaction._commandStartTime}`);
-
-        logger.debug(`[ECONOMY] Balance check for ${targetUser.id}`, { userId: targetUser.id, guildId });
+        logger.info(
+            `[EMERALD] Balance check - userOption: ${
+                userOption?.id || 'null'
+            }, targetUser: ${targetUser.id}, guildId: ${guildId}`
+        );
 
         if (targetUser.bot) {
             throw createError(
-                "Bot user queried for balance",
+                'Bot user queried for balance',
                 ErrorTypes.VALIDATION,
-                "Bots don't have an economy balance."
+                "Bots don't have an Emerald balance."
             );
         }
 
-        const userData = await getEconomyData(client, guildId, targetUser.id);
-
-        logger.info(`[ECONOMY] Economy data retrieved - userData:`, userData);
+        const userData = await getEconomyData(
+            client,
+            guildId,
+            targetUser.id
+        );
 
         if (!userData) {
             throw createError(
-                "Failed to load economy data",
+                'Failed to load economy data',
                 ErrorTypes.DATABASE,
-                "Failed to load economy data. Please try again later.",
-                { userId: targetUser.id, guildId }
+                'Failed to load Emerald balance. Please try again later.',
+                {
+                    userId: targetUser.id,
+                    guildId
+                }
             );
         }
 
-        const maxBank = getMaxBankCapacity(userData);
+        const emeralds = Number(userData.emeralds || 0);
 
-        const wallet = typeof userData.wallet === 'number' ? userData.wallet : 0;
-        const bank = typeof userData.bank === 'number' ? userData.bank : 0;
+        const emeraldPath = path.join(
+            process.cwd(),
+            'src',
+            'emerald.png'
+        );
 
-            const embed = createEmbed({
-                title: `${targetUser.username}'s Balance`,
-                description: `Here is the current financial status for ${targetUser.username}.`,
+        const emeraldIcon = new AttachmentBuilder(emeraldPath, {
+            name: 'emerald.png'
+        });
+
+        const embed = createEmbed({
+            title: `${targetUser.username}'s Emeralds`,
+            description:
+                `Here is the current Emerald balance for ${targetUser.username}.`
+        })
+            .addFields({
+                name: 'Emeralds',
+                value: `**${emeralds.toLocaleString()}**`,
+                inline: false
             })
-                .addFields(
-                    {
-                        name: "💵 Cash",
-                        value: `$${wallet.toLocaleString()}`,
-                        inline: true,
-                    },
-                    {
-                        name: "🏦 Bank",
-                        value: `$${bank.toLocaleString()} / $${maxBank.toLocaleString()}`,
-                        inline: true,
-                    },
-                    {
-                        name: "💰 Total",
-                        value: `$${(wallet + bank).toLocaleString()}`,
-                        inline: true,
-                    }
-                )
-                .setFooter({
-                    text: `Requested by ${interaction.user.tag}`,
-                    iconURL: interaction.user.displayAvatarURL(),
-                });
+            .setThumbnail('attachment://emerald.png')
+            .setFooter({
+                text: `Requested by ${interaction.user.tag}`,
+                iconURL: interaction.user.displayAvatarURL()
+            });
 
-            logger.info(`[ECONOMY] Balance retrieved`, { userId: targetUser.id, wallet, bank });
+        logger.info(
+            `[EMERALD] Balance retrieved`,
+            {
+                userId: targetUser.id,
+                guildId,
+                emeralds
+            }
+        );
 
-            await InteractionHelper.safeEditReply(interaction, { embeds: [embed] });
+        await InteractionHelper.safeEditReply(interaction, {
+            embeds: [embed],
+            files: [emeraldIcon]
+        });
+
     }, { command: 'balance' })
 };
