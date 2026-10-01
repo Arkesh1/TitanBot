@@ -39,25 +39,39 @@ const arrowPath = path.join(
 );
 
 async function createSpinGif(resultMultiplier) {
-  const wheelBuffer = await fs.readFile(wheelPath);
-  const arrowBuffer = await fs.readFile(arrowPath);
+  const wheelBuffer =
+    await fs.readFile(wheelPath);
 
-  const wheel = await sharp(wheelBuffer)
-    .ensureAlpha()
-    .resize(WHEEL_SIZE, WHEEL_SIZE, {
-      fit: 'contain'
-    })
-    .png()
-    .toBuffer();
+  const arrowBuffer =
+    await fs.readFile(arrowPath);
 
-  const arrow = await sharp(arrowBuffer)
-    .ensureAlpha()
-    .resize({
-      width: 95
-    })
-    .png()
-    .toBuffer();
+  const wheel =
+    await sharp(wheelBuffer)
+      .ensureAlpha()
+      .resize(WHEEL_SIZE, WHEEL_SIZE, {
+        fit: 'contain'
+      })
+      .png()
+      .toBuffer();
 
+  const arrow =
+    await sharp(arrowBuffer)
+      .ensureAlpha()
+      .resize({
+        width: 95
+      })
+      .png()
+      .toBuffer();
+
+  /*
+   * Wheel layout:
+   *
+   *       3x
+   *   0x      2x
+   *       1x
+   *
+   * The arrow stays fixed at the top.
+   */
   const targetRotation = {
     3: 0,
     2: 270,
@@ -71,10 +85,17 @@ async function createSpinGif(resultMultiplier) {
 
   const frames = [];
 
-  for (let i = 0; i < FRAME_COUNT; i++) {
+  for (
+    let i = 0;
+    i < FRAME_COUNT;
+    i++
+  ) {
     const progress =
       i / (FRAME_COUNT - 1);
 
+    /*
+     * Ease-out animation.
+     */
     const eased =
       1 - Math.pow(1 - progress, 3);
 
@@ -95,7 +116,8 @@ async function createSpinGif(resultMultiplier) {
         .toBuffer();
 
     const metadata =
-      await sharp(rotatedWheel).metadata();
+      await sharp(rotatedWheel)
+        .metadata();
 
     const left =
       Math.max(
@@ -157,95 +179,102 @@ async function createSpinGif(resultMultiplier) {
         .toBuffer();
 
     /*
-     * Composite the fixed arrow.
+     * Add the fixed arrow.
      */
-  const raw =
-  await sharp(croppedWheel)
-    .composite([
-      {
-        input: arrow,
-        gravity: 'north'
-      }
-    ])
-    .removeAlpha()
-    .raw()
-    .toBuffer({
-      resolveWithObject: true
-    });
+    const raw =
+      await sharp(croppedWheel)
+        .composite([
+          {
+            input: arrow,
+            gravity: 'north'
+          }
+        ])
+        .removeAlpha()
+        .raw()
+        .toBuffer({
+          resolveWithObject: true
+        });
 
-/*
- * Convert RGB -> RGBA while reducing the
- * image to a maximum of 128 colors.
- *
- * R: 4 levels
- * G: 8 levels
- * B: 4 levels
- *
- * 4 × 8 × 4 = 128 colors.
- */
-const rgb = raw.data;
+    /*
+     * Convert RGB -> RGBA.
+     *
+     * Reduce the image to a maximum of
+     * 128 possible RGB colors:
+     *
+     * R = 4 levels
+     * G = 8 levels
+     * B = 4 levels
+     *
+     * 4 × 8 × 4 = 128 colors.
+     *
+     * This avoids gifwrap's slow quantizers.
+     */
+    const rgb = raw.data;
 
-const rgba =
-  Buffer.alloc(
-    raw.info.width *
-    raw.info.height *
-    4
-  );
+    const rgba =
+      Buffer.alloc(
+        raw.info.width *
+        raw.info.height *
+        4
+      );
 
-let sourceIndex = 0;
-let targetIndex = 0;
+    let sourceIndex = 0;
+    let targetIndex = 0;
 
-while (
-  sourceIndex < rgb.length
-) {
-  const r = rgb[sourceIndex];
-  const g = rgb[sourceIndex + 1];
-  const b = rgb[sourceIndex + 2];
+    while (
+      sourceIndex < rgb.length
+    ) {
+      const r =
+        rgb[sourceIndex];
 
-  /*
-   * Reduce colors.
-   */
-  const reducedR =
-    Math.round(r / 85) * 85;
+      const g =
+        rgb[sourceIndex + 1];
 
-  const reducedG =
-    Math.round(g / 36) * 36;
+      const b =
+        rgb[sourceIndex + 2];
 
-  const reducedB =
-    Math.round(b / 85) * 85;
+      const reducedR =
+        Math.round(r / 85) * 85;
 
-  /*
-   * GifFrame requires RGBA.
-   */
-  rgba[targetIndex] =
-    reducedR;
+      const reducedG =
+        Math.round(g / 36) * 36;
 
-  rgba[targetIndex + 1] =
-    reducedG;
+      const reducedB =
+        Math.round(b / 85) * 85;
 
-  rgba[targetIndex + 2] =
-    reducedB;
+      /*
+       * GifFrame requires RGBA.
+       */
+      rgba[targetIndex] =
+        reducedR;
 
-  rgba[targetIndex + 3] =
-    255;
+      rgba[targetIndex + 1] =
+        reducedG;
 
-  sourceIndex += 3;
-  targetIndex += 4;
-}
+      rgba[targetIndex + 2] =
+        reducedB;
 
-const frame =
-  new GifFrame(
-    {
-      width: raw.info.width,
-      height: raw.info.height,
-      data: rgba
-    },
-    {
-      delayCentisecs: FRAME_DELAY
+      rgba[targetIndex + 3] =
+        255;
+
+      sourceIndex += 3;
+      targetIndex += 4;
     }
-  );
 
-frames.push(frame);
+    const frame =
+      new GifFrame(
+        {
+          width: raw.info.width,
+          height: raw.info.height,
+          data: rgba
+        },
+        {
+          delayCentisecs: FRAME_DELAY
+        }
+      );
+
+    frames.push(frame);
+  }
 
   /*
    * Hold the winning position.
@@ -253,17 +282,22 @@ frames.push(frame);
   const winningFrame =
     frames[frames.length - 1];
 
-  for (let i = 0; i < 8; i++) {
+  for (
+    let i = 0;
+    i < 8;
+    i++
+  ) {
     frames.push(
       new GifFrame(winningFrame)
     );
   }
 
   /*
-   * No quantization here.
+   * Encode GIF.
    *
-   * The frames already contain only
-   * 128 possible RGB colors.
+   * No gifwrap quantizer is used.
+   * Every frame was already reduced
+   * to 128 possible RGB colors.
    */
   const gif =
     await GifUtil.write(
@@ -300,7 +334,9 @@ export default {
         userId
       );
 
-    if (currentEmeralds < SPIN_COST) {
+    if (
+      currentEmeralds < SPIN_COST
+    ) {
       return interaction.reply({
         content:
           `💎 You need **${SPIN_COST} Emeralds** to spin. ` +
@@ -316,7 +352,9 @@ export default {
         )
         .setLabel('Confirm Spin')
         .setEmoji('🎡')
-        .setStyle(ButtonStyle.Success);
+        .setStyle(
+          ButtonStyle.Success
+        );
 
     const cancelButton =
       new ButtonBuilder()
@@ -392,7 +430,9 @@ export default {
           userId
         );
 
-      if (latestEmeralds < SPIN_COST) {
+      if (
+        latestEmeralds < SPIN_COST
+      ) {
         return interaction.editReply({
           content:
             `❌ You no longer have enough Emeralds.\n\n` +
@@ -402,7 +442,7 @@ export default {
       }
 
       /*
-       * Decide the result BEFORE animation.
+       * Decide result BEFORE animation.
        */
       const result =
         MULTIPLIERS[
@@ -432,7 +472,9 @@ export default {
         /*
          * Award winnings.
          */
-        if (result.payout > 0) {
+        if (
+          result.payout > 0
+        ) {
           await EconomyService.addEmeralds(
             interaction.client,
             guildId,
