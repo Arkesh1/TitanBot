@@ -478,13 +478,7 @@ async function handleLeveling(message, client) {
         'level-up'
     );
 
-    await message.channel.send(
-        `🎉 **${message.author} reached Level ${result.level}!**\n💎 You earned **${emeraldReward} Emeralds!**`
-    );
 
-    logger.info(
-        `User ${message.author.tag} reached level ${result.level} and received ${emeraldReward} Emeralds`
-    );
     }
   } catch (error) {
     logger.error(
