@@ -298,7 +298,7 @@ async function handleCountingGame(message, client) {
 async function handleRandomEmeraldReward(message, client) {
   try {
     // Only reward messages in #💬 │ general
-    if (message.channel.name !== '💬 │ general') {
+    if (message.channel.name !== '💬│general') {
       return;
     }
 
