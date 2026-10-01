@@ -112,37 +112,53 @@ export default {
                         );
 
                         // -------------------------------------------------
-                        // PUBLIC INVITE REWARD MESSAGE
+                        // INVITE REWARD MESSAGE
                         // -------------------------------------------------
 
-                   try {
-    const channel = guild.channels.cache.find(
-        channel => channel.name === '📥│invite-rewards'
-    );
+                        try {
+                            const channel =
+                                guild.channels.cache.find(
+                                    channel =>
+                                        channel.name ===
+                                        '📥│invite-rewards'
+                                );
 
-    if (channel?.isTextBased()) {
-        const permissions =
-            channel.permissionsFor(guild.members.me);
+                            if (channel?.isTextBased()) {
+                                const permissions =
+                                    channel.permissionsFor(
+                                        guild.members.me
+                                    );
 
-        if (
-            permissions?.has(
-                PermissionFlagsBits.ViewChannel
-            ) &&
-            permissions?.has(
-                PermissionFlagsBits.SendMessages
-            )
-        ) {
-            await channel.send(
-                `💎 <@${inviterId}> earned **100 Emeralds** for inviting ${user}!`
-            );
-        }
-    }
-} catch (error) {
-    logger.debug(
-        'Could not send invite reward message:',
-        error
-    );
-}
+                                if (
+                                    permissions?.has(
+                                        PermissionFlagsBits.ViewChannel
+                                    ) &&
+                                    permissions?.has(
+                                        PermissionFlagsBits.SendMessages
+                                    )
+                                ) {
+                                    await channel.send(
+                                        `💎 <@${inviterId}> earned **100 Emeralds** for inviting ${user}!`
+                                    );
+                                }
+                            }
+
+                        } catch (error) {
+                            logger.debug(
+                                'Could not send invite reward message:',
+                                error
+                            );
+                        }
+                    }
+
+                } catch (error) {
+                    logger.warn(
+                        `Could not process invite reward for ${user.id}:`,
+                        error
+                    );
+                }
+            }
+
             // =====================================================
             // WELCOME MESSAGE + WELCOME CARD
             // =====================================================
@@ -309,20 +325,6 @@ export default {
             // FIRST 500 OG MEMBERS
             // =====================================================
 
-            /*
-             * Simple OG system:
-             *
-             * Current member count <= 500
-             *       ↓
-             * Give OG role
-             *       ↓
-             * Send public OG message
-             *       ↓
-             * Send OG DM
-             *
-             * Bots are excluded.
-             */
-
             if (!user.bot && guild.memberCount <= 501) {
 
                 // -------------------------------------------------
@@ -401,8 +403,6 @@ export default {
                     );
 
                 } catch (error) {
-                    // User may have DMs disabled.
-                    // This should NOT break the join process.
                     logger.debug(
                         `Could not DM OG member ${user.id}:`,
                         error
