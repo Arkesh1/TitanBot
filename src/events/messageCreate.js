@@ -297,34 +297,36 @@ async function handleCountingGame(message, client) {
 
 async function handleRandomEmeraldReward(message, client) {
   try {
-    // Only reward messages in #💬 │ general
     if (message.channel.name !== '💬│general') {
       return;
     }
 
-    // TEMPORARY TEST MODE:
-    // Every message gives 10 Emeralds.
-    const amount = 10;
+    // 20% chance
+    if (Math.random() > 0.20) {
+      return;
+    }
+
+    const rewards = [5, 10, 15, 25];
+    const amount = rewards[Math.floor(Math.random() * rewards.length)];
 
     await EconomyService.addEmeralds(
       client,
       message.guild.id,
       message.author.id,
       amount,
-      'chat-test'
+      'chat'
     );
 
-    logger.info(
-      `Added ${amount} Emeralds to ${message.author.tag}`
+    await message.channel.send(
+      `**${message.author} earned ${amount} Emeralds!**`
     );
   } catch (error) {
     logger.error(
-      'Error handling Emerald reward:',
+      'Error handling random Emerald reward:',
       error
     );
   }
 }
-
 async function handleLeveling(message, client) {
   try {
     const rateLimitKey =
