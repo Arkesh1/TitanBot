@@ -165,6 +165,18 @@ async function createSpinGif(resultMultiplier) {
     frames.push(new GifFrame(finalFrame));
   }
 
+  // GIF supports a maximum of 256 color indexes.
+  // Quantize all frames together so they share a consistent palette.
+  GifUtil.quantizeWu(
+    frames,
+    256,
+    5,
+    {
+      ditherAlgorithm: 'FloydSteinberg',
+      serpentine: true
+    }
+  );
+
   const gif = await GifUtil.write(
     '/tmp/spin-result.gif',
     frames,
@@ -172,7 +184,6 @@ async function createSpinGif(resultMultiplier) {
       loops: 1
     }
   );
-
   return gif.buffer;
 }
 
@@ -337,10 +348,10 @@ async execute(interaction) {
 
       if (result.multiplier === 0) {
         resultText =
-          `💎 **0× — You won nothing!**`;
+          `**0× — You won nothing!**`;
       } else {
         resultText =
-          `💎 **${result.multiplier}× — You won ${result.payout} Emeralds!**`;
+          `**${result.multiplier}× — You won ${result.payout} Emeralds!**`;
       }
 
       await interaction.editReply({
