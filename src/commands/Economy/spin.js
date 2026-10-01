@@ -5,7 +5,6 @@ import {
   ButtonBuilder,
   ButtonStyle
 } from 'discord.js';
-import { SlashCommandBuilder, AttachmentBuilder } from 'discord.js';
 import path from 'path';
 import fs from 'fs/promises';
 import sharp from 'sharp';
