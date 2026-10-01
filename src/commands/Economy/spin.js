@@ -159,61 +159,93 @@ async function createSpinGif(resultMultiplier) {
     /*
      * Composite the fixed arrow.
      */
-    const raw =
-      await sharp(croppedWheel)
-        .composite([
-          {
-            input: arrow,
-            gravity: 'north'
-          }
-        ])
-        .removeAlpha()
-        .raw()
-        .toBuffer({
-          resolveWithObject: true
-        });
+  const raw =
+  await sharp(croppedWheel)
+    .composite([
+      {
+        input: arrow,
+        gravity: 'north'
+      }
+    ])
+    .removeAlpha()
+    .raw()
+    .toBuffer({
+      resolveWithObject: true
+    });
 
-    /*
-     * Reduce RGB to a fixed 128-color palette.
-     *
-     * R: 2 bits
-     * G: 3 bits
-     * B: 2 bits
-     *
-     * 4 × 8 × 4 = 128 colors.
-     *
-     * This is intentionally done manually because
-     * gifwrap's quantizers are too slow for this animation.
-     */
-    const data = raw.data;
+/*
+ * Convert RGB -> RGBA while reducing the
+ * image to a maximum of 128 colors.
+ *
+ * R: 4 levels
+ * G: 8 levels
+ * B: 4 levels
+ *
+ * 4 × 8 × 4 = 128 colors.
+ */
+const rgb = raw.data;
 
-    for (let p = 0; p < data.length; p += 3) {
-      data[p] =
-        Math.round(data[p] / 85) * 85;
+const rgba =
+  Buffer.alloc(
+    raw.info.width *
+    raw.info.height *
+    4
+  );
 
-      data[p + 1] =
-        Math.round(data[p + 1] / 36) * 36;
+let sourceIndex = 0;
+let targetIndex = 0;
 
-      data[p + 2] =
-        Math.round(data[p + 2] / 85) * 85;
+while (
+  sourceIndex < rgb.length
+) {
+  const r = rgb[sourceIndex];
+  const g = rgb[sourceIndex + 1];
+  const b = rgb[sourceIndex + 2];
+
+  /*
+   * Reduce colors.
+   */
+  const reducedR =
+    Math.round(r / 85) * 85;
+
+  const reducedG =
+    Math.round(g / 36) * 36;
+
+  const reducedB =
+    Math.round(b / 85) * 85;
+
+  /*
+   * GifFrame requires RGBA.
+   */
+  rgba[targetIndex] =
+    reducedR;
+
+  rgba[targetIndex + 1] =
+    reducedG;
+
+  rgba[targetIndex + 2] =
+    reducedB;
+
+  rgba[targetIndex + 3] =
+    255;
+
+  sourceIndex += 3;
+  targetIndex += 4;
+}
+
+const frame =
+  new GifFrame(
+    {
+      width: raw.info.width,
+      height: raw.info.height,
+      data: rgba
+    },
+    {
+      delayCentisecs: FRAME_DELAY
     }
+  );
 
-    const frame =
-      new GifFrame(
-        {
-          width: raw.info.width,
-          height: raw.info.height,
-          data: Buffer.from(
-            data
-          )
-        },
-        {
-          delayCentisecs: FRAME_DELAY
-        }
-      );
-
-    frames.push(frame);
-  }
+frames.push(frame);
 
   /*
    * Hold the winning position.
