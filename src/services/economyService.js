@@ -15,9 +15,12 @@ class EconomyService {
   static MINE_COOLDOWN = 60 * 60 * 1000;
   static FISH_COOLDOWN = 45 * 60 * 1000;
   static BEG_COOLDOWN = 30 * 60 * 1000;
-  
+
   static DAILY_AMOUNT = 1000;
   static MAX_SAFE_INTEGER = Number.MAX_SAFE_INTEGER;
+
+  // Emerald economy
+  static EMERALD_STARTING_BALANCE = 0;
 
   static assertSafeBalance(value, context = {}) {
     if (!Number.isSafeInteger(value) || value < 0 || value > this.MAX_SAFE_INTEGER) {
@@ -30,9 +33,29 @@ class EconomyService {
     }
   }
 
+  static assertEmeraldAmount(amount) {
+    if (!Number.isInteger(amount) || amount <= 0) {
+      throw createError(
+        "Invalid Emerald amount",
+        ErrorTypes.VALIDATION,
+        "Emerald amount must be a positive whole number.",
+        { amount }
+      );
+    }
+
+    if (amount > this.MAX_SAFE_INTEGER) {
+      throw createError(
+        "Emerald amount too large",
+        ErrorTypes.VALIDATION,
+        "The Emerald amount is too large to process.",
+        { amount }
+      );
+    }
+  }
+
   static async claimDaily(client, guildId, userId) {
     logger.debug(`[ECONOMY_SERVICE] claimDaily requested`, { userId, guildId });
-    
+
     const userData = await getEconomyData(client, guildId, userId);
     if (!userData) {
       logger.error(`[ECONOMY_SERVICE] Failed to load economy data for daily`);
@@ -53,6 +76,7 @@ class EconomyService {
         userId,
         timeRemaining: remaining
       });
+
       throw createError(
         "Daily cooldown active",
         ErrorTypes.RATE_LIMIT,
@@ -69,7 +93,7 @@ class EconomyService {
 
     try {
       await setEconomyData(client, guildId, userId, userData);
-      
+
       logger.info(`[ECONOMY_TRANSACTION] Daily claimed`, {
         userId,
         guildId,
@@ -90,6 +114,7 @@ class EconomyService {
         guildId,
         amount: earned
       });
+
       throw createError(
         "Failed to save daily claim",
         ErrorTypes.DATABASE,
@@ -137,6 +162,7 @@ class EconomyService {
         senderLoaded: !!senderData,
         receiverLoaded: !!receiverData
       });
+
       throw createError(
         "Failed to load economy data",
         ErrorTypes.DATABASE,
@@ -151,6 +177,7 @@ class EconomyService {
         required: amount,
         available: senderData.wallet
       });
+
       throw createError(
         "Insufficient funds",
         ErrorTypes.VALIDATION,
@@ -170,25 +197,34 @@ class EconomyService {
     receiverData.wallet = receiverNext;
 
     try {
-      
+
       await setEconomyData(client, guildId, senderId, senderData);
-      
+
       try {
-        
+
         await setEconomyData(client, guildId, receiverId, receiverData);
       } catch (receiverError) {
-        
-        logger.error(`[ECONOMY_CRITICAL] Failed to credit receiver ${receiverId}. Attempting rollback for sender ${senderId}...`, receiverError);
-        
+
+        logger.error(
+          `[ECONOMY_CRITICAL] Failed to credit receiver ${receiverId}. Attempting rollback for sender ${senderId}...`,
+          receiverError
+        );
+
         senderData.wallet = walletBefore;
+
         try {
           await setEconomyData(client, guildId, senderId, senderData);
-          logger.info(`[ECONOMY_ROLLBACK] Successfully rolled back sender ${senderId} after receiver credit failure.`);
+
+          logger.info(
+            `[ECONOMY_ROLLBACK] Successfully rolled back sender ${senderId} after receiver credit failure.`
+          );
         } catch (rollbackError) {
-          logger.error(`[ECONOMY_FATAL] ROLLBACK FAILED for sender ${senderId}! Data is now inconsistent.`, rollbackError);
-          
+          logger.error(
+            `[ECONOMY_FATAL] ROLLBACK FAILED for sender ${senderId}! Data is now inconsistent.`,
+            rollbackError
+          );
         }
-        
+
         throw receiverError;
       }
 
@@ -208,15 +244,20 @@ class EconomyService {
         receiverNewBalance: receiverData.wallet
       };
     } catch (error) {
-      logger.error(`[ECONOMY_SERVICE] Transfer execution failed, DATA MAY BE INCONSISTENT`, error, {
-        senderId,
-        receiverId,
-        amount,
-        guildId,
-        senderBefore: walletBefore,
-        senderAfter: senderData.wallet,
-        receiverAfter: receiverData.wallet
-      });
+      logger.error(
+        `[ECONOMY_SERVICE] Transfer execution failed, DATA MAY BE INCONSISTENT`,
+        error,
+        {
+          senderId,
+          receiverId,
+          amount,
+          guildId,
+          senderBefore: walletBefore,
+          senderAfter: senderData.wallet,
+          receiverAfter: receiverData.wallet
+        }
+      );
+
       throw createError(
         "Failed to save transfer",
         ErrorTypes.DATABASE,
@@ -241,7 +282,14 @@ class EconomyService {
     const userData = await getEconomyData(client, guildId, userId);
     const balanceBefore = userData.wallet || 0;
     const nextWallet = balanceBefore + amount;
-    this.assertSafeBalance(nextWallet, { operation: 'addMoney', userId, source, amount });
+
+    this.assertSafeBalance(nextWallet, {
+      operation: 'addMoney',
+      userId,
+      source,
+      amount
+    });
+
     userData.wallet = nextWallet;
 
     await setEconomyData(client, guildId, userId, userData);
@@ -318,20 +366,34 @@ class EconomyService {
     }
 
     const currentBank = userData.bank || 0;
+
     if (currentBank + amount > maxBank) {
       throw createError(
         "Bank capacity exceeded",
         ErrorTypes.VALIDATION,
         `Your bank can only hold **$${maxBank.toLocaleString()}**. You would exceed capacity by **$${(currentBank + amount - maxBank).toLocaleString()}**.`,
-        { capacity: maxBank, current: currentBank, requested: amount }
+        {
+          capacity: maxBank,
+          current: currentBank,
+          requested: amount
+        }
       );
     }
 
     const nextWallet = userData.wallet - amount;
     const nextBank = (userData.bank || 0) + amount;
 
-    this.assertSafeBalance(nextWallet, { operation: 'deposit.wallet', userId, amount });
-    this.assertSafeBalance(nextBank, { operation: 'deposit.bank', userId, amount });
+    this.assertSafeBalance(nextWallet, {
+      operation: 'deposit.wallet',
+      userId,
+      amount
+    });
+
+    this.assertSafeBalance(nextBank, {
+      operation: 'deposit.bank',
+      userId,
+      amount
+    });
 
     userData.wallet = nextWallet;
     userData.bank = nextBank;
@@ -368,8 +430,17 @@ class EconomyService {
     const nextWallet = (userData.wallet || 0) + amount;
     const nextBank = bank - amount;
 
-    this.assertSafeBalance(nextWallet, { operation: 'withdraw.wallet', userId, amount });
-    this.assertSafeBalance(nextBank, { operation: 'withdraw.bank', userId, amount });
+    this.assertSafeBalance(nextWallet, {
+      operation: 'withdraw.wallet',
+      userId,
+      amount
+    });
+
+    this.assertSafeBalance(nextBank, {
+      operation: 'withdraw.bank',
+      userId,
+      amount
+    });
 
     userData.wallet = nextWallet;
     userData.bank = nextBank;
@@ -386,6 +457,220 @@ class EconomyService {
     });
 
     return userData;
+  }
+
+  // ============================================================
+  // EMERALD ECONOMY
+  // ============================================================
+
+  static async getEmeralds(client, guildId, userId) {
+    const userData = await getEconomyData(client, guildId, userId);
+
+    if (!userData) {
+      throw createError(
+        "Failed to load economy data",
+        ErrorTypes.DATABASE,
+        "Failed to load your Emerald balance. Please try again later.",
+        { guildId, userId }
+      );
+    }
+
+    return Number(userData.emeralds || this.EMERALD_STARTING_BALANCE);
+  }
+
+  static async addEmeralds(
+    client,
+    guildId,
+    userId,
+    amount,
+    source = 'unknown'
+  ) {
+    this.assertEmeraldAmount(amount);
+
+    const userData = await getEconomyData(client, guildId, userId);
+
+    if (!userData) {
+      throw createError(
+        "Failed to load economy data",
+        ErrorTypes.DATABASE,
+        "Failed to load your Emerald balance. Please try again later.",
+        { guildId, userId }
+      );
+    }
+
+    const currentEmeralds = Number(
+      userData.emeralds || this.EMERALD_STARTING_BALANCE
+    );
+
+    const nextEmeralds = currentEmeralds + amount;
+
+    if (
+      !Number.isSafeInteger(nextEmeralds) ||
+      nextEmeralds < 0 ||
+      nextEmeralds > this.MAX_SAFE_INTEGER
+    ) {
+      throw createError(
+        "Invalid Emerald balance",
+        ErrorTypes.VALIDATION,
+        "This operation would create an invalid Emerald balance.",
+        {
+          guildId,
+          userId,
+          currentEmeralds,
+          amount
+        }
+      );
+    }
+
+    userData.emeralds = nextEmeralds;
+
+    await setEconomyData(client, guildId, userId, userData);
+
+    logger.info(`[EMERALD_TRANSACTION] Emeralds added`, {
+      userId,
+      guildId,
+      amount,
+      source,
+      balanceBefore: currentEmeralds,
+      balanceAfter: nextEmeralds,
+      delta: amount,
+      timestamp: new Date().toISOString()
+    });
+
+    return nextEmeralds;
+  }
+
+  static async removeEmeralds(
+    client,
+    guildId,
+    userId,
+    amount,
+    reason = 'unknown'
+  ) {
+    this.assertEmeraldAmount(amount);
+
+    const userData = await getEconomyData(client, guildId, userId);
+
+    if (!userData) {
+      throw createError(
+        "Failed to load economy data",
+        ErrorTypes.DATABASE,
+        "Failed to load your Emerald balance. Please try again later.",
+        { guildId, userId }
+      );
+    }
+
+    const currentEmeralds = Number(
+      userData.emeralds || this.EMERALD_STARTING_BALANCE
+    );
+
+    if (currentEmeralds < amount) {
+      throw createError(
+        "Insufficient Emeralds",
+        ErrorTypes.VALIDATION,
+        `You only have **${currentEmeralds.toLocaleString()} Emeralds**.`,
+        {
+          guildId,
+          userId,
+          required: amount,
+          available: currentEmeralds,
+          reason
+        }
+      );
+    }
+
+    const nextEmeralds = currentEmeralds - amount;
+
+    this.assertSafeBalance(nextEmeralds, {
+      operation: 'removeEmeralds',
+      guildId,
+      userId,
+      amount
+    });
+
+    userData.emeralds = nextEmeralds;
+
+    await setEconomyData(client, guildId, userId, userData);
+
+    logger.info(`[EMERALD_TRANSACTION] Emeralds removed`, {
+      userId,
+      guildId,
+      amount,
+      reason,
+      balanceBefore: currentEmeralds,
+      balanceAfter: nextEmeralds,
+      delta: -amount,
+      timestamp: new Date().toISOString()
+    });
+
+    return nextEmeralds;
+  }
+
+  static async setEmeralds(
+    client,
+    guildId,
+    userId,
+    amount,
+    reason = 'unknown'
+  ) {
+    if (!Number.isInteger(amount) || amount < 0) {
+      throw createError(
+        "Invalid Emerald amount",
+        ErrorTypes.VALIDATION,
+        "Emerald balance must be a non-negative whole number.",
+        {
+          guildId,
+          userId,
+          amount,
+          reason
+        }
+      );
+    }
+
+    if (amount > this.MAX_SAFE_INTEGER) {
+      throw createError(
+        "Emerald amount too large",
+        ErrorTypes.VALIDATION,
+        "The Emerald amount is too large to process.",
+        {
+          guildId,
+          userId,
+          amount,
+          reason
+        }
+      );
+    }
+
+    const userData = await getEconomyData(client, guildId, userId);
+
+    if (!userData) {
+      throw createError(
+        "Failed to load economy data",
+        ErrorTypes.DATABASE,
+        "Failed to load your Emerald balance. Please try again later.",
+        { guildId, userId }
+      );
+    }
+
+    const balanceBefore = Number(
+      userData.emeralds || this.EMERALD_STARTING_BALANCE
+    );
+
+    userData.emeralds = amount;
+
+    await setEconomyData(client, guildId, userId, userData);
+
+    logger.info(`[EMERALD_TRANSACTION] Emerald balance set`, {
+      userId,
+      guildId,
+      reason,
+      balanceBefore,
+      balanceAfter: amount,
+      delta: amount - balanceBefore,
+      timestamp: new Date().toISOString()
+    });
+
+    return amount;
   }
 
   static checkCooldown(userData, action, cooldownMs) {
@@ -422,7 +707,11 @@ class EconomyService {
     }
 
     if (amount > this.MAX_SAFE_INTEGER) {
-      logger.error(`[ECONOMY] Amount exceeds MAX_SAFE_INTEGER`, { amount, context });
+      logger.error(`[ECONOMY] Amount exceeds MAX_SAFE_INTEGER`, {
+        amount,
+        context
+      });
+
       throw createError(
         "Amount too large",
         ErrorTypes.VALIDATION,
@@ -441,9 +730,11 @@ class EconomyService {
     if (hours > 0) {
       return `${hours}h ${minutes}m ${seconds}s`;
     }
+
     if (minutes > 0) {
       return `${minutes}m ${seconds}s`;
     }
+
     return `${seconds}s`;
   }
 
