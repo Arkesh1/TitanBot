@@ -58,7 +58,7 @@ async function createSpinGif(resultMultiplier) {
     await sharp(arrowBuffer)
       .ensureAlpha()
       .resize({
-        width: 95
+        width: 65
       })
       .png()
       .toBuffer();
