@@ -61,11 +61,12 @@ export default {
                 `admin-add:${interaction.user.id}`
             );
 
-            await interaction.reply({
-                content:
-                    `Added **${quantity} Emeralds** to ${user}.\n` +
-                    `New balance: **${newBalance} Emeralds**`,
-            });
+   await interaction.reply({
+    content:
+        `💎 Added **${quantity} Emeralds** to ${user}.\n` +
+        `💰 New balance: **${newBalance} Emeralds**`,
+    flags: MessageFlags.Ephemeral,
+});
         } catch (error) {
             await interaction.reply({
                 content: `❌ Failed to add Emeralds.\n\`${error.message || 'Unknown error'}\``,
