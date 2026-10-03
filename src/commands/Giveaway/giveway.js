@@ -80,16 +80,20 @@ export default {
 
         await interaction.showModal(modal);
 
+        let modalInteraction = null;
+
         try {
-            const modalInteraction = await interaction.awaitModalSubmit({
+            modalInteraction = await interaction.awaitModalSubmit({
                 time: 120_000,
                 filter: (submitted) =>
                     submitted.customId === 'emerald_giveaway_create_modal' &&
                     submitted.user.id === interaction.user.id,
             });
-await modalInteraction.deferReply({
-    flags: MessageFlags.Ephemeral,
-});
+
+            await modalInteraction.deferReply({
+                flags: MessageFlags.Ephemeral,
+            });
+
             const prize = validatePrize(
                 modalInteraction.fields.getTextInputValue('giveaway_prize')
             );
@@ -151,12 +155,13 @@ await modalInteraction.deferReply({
 
             if (!saved) {
                 await giveawayMessage.delete().catch(() => {});
+
                 throw new Error(
                     'Failed to save giveaway to the database.'
                 );
             }
 
-                       await modalInteraction.editReply({
+            await modalInteraction.editReply({
                 content: `✅ Giveaway created in ${interaction.channel}.`,
             });
 
@@ -170,17 +175,35 @@ await modalInteraction.deferReply({
                         channelId: interaction.channelId,
                         userId: interaction.user.id,
                         fields: [
-                            { name: 'Prize', value: prize, inline: true },
-                            { name: 'Ticket Price', value: '100 Emeralds', inline: true },
-                            { name: 'Duration', value: durationString, inline: true },
+                            {
+                                name: 'Prize',
+                                value: prize,
+                                inline: true,
+                            },
+                            {
+                                name: 'Ticket Price',
+                                value: '100 Emeralds',
+                                inline: true,
+                            },
+                            {
+                                name: 'Duration',
+                                value: durationString,
+                                inline: true,
+                            },
                         ],
                     },
                 });
             } catch (logError) {
-                logger.debug('Error logging ticket giveaway creation:', logError);
+                logger.debug(
+                    'Error logging ticket giveaway creation:',
+                    logError
+                );
             }
         } catch (error) {
-            logger.error('Error creating Emerald ticket giveaway:', error);
+            logger.error(
+                'Error creating Emerald ticket giveaway:',
+                error
+            );
 
             if (modalInteraction?.deferred || modalInteraction?.replied) {
                 await modalInteraction.editReply({
@@ -192,5 +215,6 @@ await modalInteraction.deferReply({
                     );
                 });
             }
-        },
+        }
+    },
 };
