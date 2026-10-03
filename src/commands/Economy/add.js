@@ -63,8 +63,8 @@ export default {
 
             await interaction.reply({
                 content:
-                    `💎 Added **${quantity} Emeralds** to ${user}.\n` +
-                    `💰 New balance: **${newBalance} Emeralds**`,
+                    `Added **${quantity} Emeralds** to ${user}.\n` +
+                    `New balance: **${newBalance} Emeralds**`,
             });
         } catch (error) {
             await interaction.reply({
