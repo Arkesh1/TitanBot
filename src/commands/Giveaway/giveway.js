@@ -156,9 +156,8 @@ await modalInteraction.deferReply({
                 );
             }
 
-            await modalInteraction.reply({
+                       await modalInteraction.editReply({
                 content: `✅ Giveaway created in ${interaction.channel}.`,
-                flags: MessageFlags.Ephemeral,
             });
 
             try {
@@ -167,42 +166,31 @@ await modalInteraction.deferReply({
                     guildId: interaction.guildId,
                     eventType: EVENT_TYPES.GIVEAWAY_CREATE,
                     data: {
-                        description:
-                            `Emerald ticket giveaway created: ${prize}`,
-
+                        description: `Emerald ticket giveaway created: ${prize}`,
                         channelId: interaction.channelId,
                         userId: interaction.user.id,
-
                         fields: [
-                            {
-                                name: 'Prize',
-                                value: prize,
-                                inline: true,
-                            },
-                            {
-                                name: 'Ticket Price',
-                                value: '100 Emeralds',
-                                inline: true,
-                            },
-                            {
-                                name: 'Duration',
-                                value: durationString,
-                                inline: true,
-                            },
+                            { name: 'Prize', value: prize, inline: true },
+                            { name: 'Ticket Price', value: '100 Emeralds', inline: true },
+                            { name: 'Duration', value: durationString, inline: true },
                         ],
                     },
                 });
             } catch (logError) {
-                logger.debug(
-                    'Error logging ticket giveaway creation:',
-                    logError
-                );
+                logger.debug('Error logging ticket giveaway creation:', logError);
             }
         } catch (error) {
-            logger.error(
-                'Error creating Emerald ticket giveaway:',
-                error
-            );
+            logger.error('Error creating Emerald ticket giveaway:', error);
+
+            if (modalInteraction?.deferred || modalInteraction?.replied) {
+                await modalInteraction.editReply({
+                    content: `❌ Giveaway creation failed.\n\`${error.message || 'Unknown error'}\``,
+                }).catch((replyError) => {
+                    logger.error(
+                        'Could not send giveaway error reply:',
+                        replyError
+                    );
+                });
+            }
         }
-    },
 };
