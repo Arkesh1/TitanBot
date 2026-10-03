@@ -2,7 +2,7 @@ import { Events, ChannelType } from 'discord.js';
 import { logger } from '../utils/logger.js';
 
 const CATEGORY_NAME = '📊│Population';
-const MEMBER_CHANNEL_PREFIX = '🔒 Total Members:';
+const MEMBER_CHANNEL_PREFIX = '🔒 𝐓𝐨𝐭𝐚𝐥 𝐌𝐞𝐦𝐛𝐞𝐫𝐬:';
 
 const UPDATE_INTERVAL = 30_000; // 30 seconds
 
