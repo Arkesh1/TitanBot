@@ -13,7 +13,9 @@ import {
     isUserRateLimited,
     recordUserInteraction,
     createGiveawayEmbed,
-    createGiveawayButtons
+   createGiveawayButtons,
+createTicketGiveawayEmbed,
+createTicketGiveawayButtons
 } from '../services/giveawayService.js';
 import { logEvent, EVENT_TYPES } from '../services/loggingService.js';
 
@@ -382,4 +384,231 @@ export const giveawayViewHandler = {
             });
         }
     }
+    export const emeraldGiveawayBuyHandler = {
+    customId: 'emerald_giveaway_buy',
+
+    async execute(interaction, client) {
+        try {
+            if (!interaction.inGuild()) {
+                return replyUserError(interaction, {
+                    type: ErrorTypes.VALIDATION,
+                    message:
+                        'This button can only be used in a server.'
+                });
+            }
+
+            if (
+                isUserRateLimited(
+                    interaction.user.id,
+                    interaction.message.id
+                )
+            ) {
+                return replyUserError(interaction, {
+                    type: ErrorTypes.RATE_LIMIT,
+                    message:
+                        'Please wait a moment before buying another ticket.'
+                });
+            }
+
+            await recordUserInteraction(
+                interaction.user.id,
+                interaction.message.id
+            );
+
+            await interaction.deferReply({
+                flags: MessageFlags.Ephemeral
+            });
+
+            const lockKey =
+                `emerald-giveaway:${interaction.message.id}`;
+
+            await Mutex.runExclusive(
+                lockKey,
+                async () => {
+                    const guildGiveaways =
+                        await getGuildGiveaways(
+                            client,
+                            interaction.guildId
+                        );
+
+                    const giveaway =
+                        guildGiveaways.find(
+                            (g) =>
+                                g.messageId ===
+                                interaction.message.id
+                        );
+
+                    if (
+                        !giveaway ||
+                        giveaway.ticketBased !== true
+                    ) {
+                        return interaction.editReply({
+                            content:
+                                '❌ This giveaway could not be found.'
+                        });
+                    }
+
+                    if (
+                        giveaway.ended ||
+                        giveaway.isEnded ||
+                        isGiveawayEnded(giveaway)
+                    ) {
+                        return interaction.editReply({
+                            content:
+                                '❌ This giveaway has already ended.'
+                        });
+                    }
+
+                    const tickets =
+                        Array.isArray(
+                            giveaway.tickets
+                        )
+                            ? giveaway.tickets
+                            : [];
+
+                    const userTickets =
+                        tickets.filter(
+                            (ticket) =>
+                                ticket.userId ===
+                                interaction.user.id
+                        ).length;
+
+                    const maxTickets =
+                        Number(
+                            giveaway.maxTicketsPerUser ||
+                            5
+                        );
+
+                    const ticketPrice =
+                        Number(
+                            giveaway.ticketPrice ||
+                            100
+                        );
+
+                    if (
+                        userTickets >=
+                        maxTickets
+                    ) {
+                        return interaction.editReply({
+                            content:
+                                `❌ You already have the maximum of **${maxTickets} tickets**.`
+                        });
+                    }
+
+                    let charged = false;
+
+                    try {
+                        const newBalance =
+                            await EconomyService.removeEmeralds(
+                                client,
+                                interaction.guildId,
+                                interaction.user.id,
+                                ticketPrice,
+                                `giveaway-ticket:${interaction.message.id}`
+                            );
+
+                        charged = true;
+
+                        const ticketNumber =
+                            tickets.length + 1;
+
+                        tickets.push({
+                            number: ticketNumber,
+                            userId:
+                                interaction.user.id,
+                            purchasedAt:
+                                new Date().toISOString(),
+                        });
+
+                        giveaway.tickets =
+                            tickets;
+
+                        giveaway.ticketCount =
+                            tickets.length;
+
+                        const saved =
+                            await saveGiveaway(
+                                client,
+                                interaction.guildId,
+                                giveaway
+                            );
+
+                        if (!saved) {
+                            throw new Error(
+                                'Failed to save the ticket purchase.'
+                            );
+                        }
+
+                        try {
+                            await interaction.message.edit({
+                                embeds: [
+                                    createTicketGiveawayEmbed(
+                                        giveaway,
+                                        'active'
+                                    ),
+                                ],
+                                components: [
+                                    createTicketGiveawayButtons(
+                                        false
+                                    ),
+                                ],
+                            });
+                        } catch (editError) {
+                            logger.warn(
+                                'Could not update ticket giveaway message:',
+                                editError.message
+                            );
+                        }
+
+                        await interaction.editReply({
+                            content:
+                                `🎟️ **Ticket #${ticketNumber} purchased!**\n` +
+                                `💎 Cost: **${ticketPrice} Emeralds**\n` +
+                                `💎 Remaining: **${newBalance} Emeralds**\n` +
+                                `🎟️ Your tickets: **${userTickets + 1}/${maxTickets}**`
+                        });
+
+                    } catch (error) {
+                        if (charged) {
+                            await EconomyService
+                                .addEmeralds(
+                                    client,
+                                    interaction.guildId,
+                                    interaction.user.id,
+                                    ticketPrice,
+                                    `giveaway-ticket-refund:${interaction.message.id}`
+                                )
+                                .catch(
+                                    (refundError) => {
+                                        logger.error(
+                                            'Failed to refund Emerald ticket purchase:',
+                                            refundError
+                                        );
+                                    }
+                                );
+                        }
+
+                        throw error;
+                    }
+                }
+            );
+        } catch (error) {
+            logger.error(
+                'Error in Emerald giveaway ticket handler:',
+                error
+            );
+
+            await handleInteractionError(
+                interaction,
+                error,
+                {
+                    type: 'button',
+                    customId:
+                        'emerald_giveaway_buy',
+                    handler: 'giveaway'
+                }
+            );
+        }
+    }
+};
 };
