@@ -82,7 +82,7 @@ export function parseDuration(durationString) {
         );
     }
 
-    const minDuration = GIVEAWAY_CONFIG.minimumDuration ?? 10 * 1000;
+    const minDuration = GIVEAWAY_CONFIG.minimumDuration ?? 60 * 1000;
     if (ms < minDuration) {
         throw new TitanBotError(
             `Duration below minimum: ${ms}ms < ${minDuration}ms`,
