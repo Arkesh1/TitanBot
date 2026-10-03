@@ -87,7 +87,9 @@ export default {
                     submitted.customId === 'emerald_giveaway_create_modal' &&
                     submitted.user.id === interaction.user.id,
             });
-
+await modalInteraction.deferReply({
+    flags: MessageFlags.Ephemeral,
+});
             const prize = validatePrize(
                 modalInteraction.fields.getTextInputValue('giveaway_prize')
             );
