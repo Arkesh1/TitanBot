@@ -192,5 +192,5 @@ await modalInteraction.deferReply({
                     );
                 });
             }
-        }
+        },
 };
