@@ -465,7 +465,180 @@ export async function checkGiveaways(client) {
       try {
         const { id: giveawayId, guild_id: guildId, message_id: messageId, data: giveawayData } = giveawayRecord;
         const giveaway = typeof giveawayData === 'string' ? JSON.parse(giveawayData) : giveawayData;
+if (giveaway?.ticketBased === true) {
+    const guild = client.guilds.cache.get(guildId);
 
+    if (!guild) {
+        logger.debug(
+            `Guild ${guildId} not found, skipping ticket giveaway ${messageId}`
+        );
+        continue;
+    }
+
+    const channel = await guild.channels
+        .fetch(giveaway.channelId)
+        .catch(() => null);
+
+    if (!channel) {
+        logger.debug(
+            `Channel ${giveaway.channelId} not found for ticket giveaway ${messageId}`
+        );
+        continue;
+    }
+
+    const message = await channel.messages
+        .fetch(messageId)
+        .catch(() => null);
+
+    if (!message) {
+        logger.debug(
+            `Message ${messageId} not found for ticket giveaway`
+        );
+        continue;
+    }
+
+    const tickets = Array.isArray(giveaway.tickets)
+        ? giveaway.tickets
+        : [];
+
+    const winningTicket =
+        selectTicketWinner(tickets);
+
+    giveaway.ended = true;
+    giveaway.isEnded = true;
+    giveaway.endedAt =
+        new Date().toISOString();
+
+    giveaway.winningTicket =
+        winningTicket;
+
+    giveaway.winnerIds =
+        winningTicket
+            ? [winningTicket.userId]
+            : [];
+
+    giveaway.winnerTicketNumber =
+        winningTicket?.number || null;
+
+    giveaway.ticketCount =
+        tickets.length;
+
+    await message.edit({
+        embeds: [
+            createTicketGiveawayEmbed(
+                giveaway,
+                'ended',
+                winningTicket
+            ),
+        ],
+        components: [
+            createTicketGiveawayButtons(true),
+        ],
+    }).catch(() => null);
+
+    const markedSuccess =
+        await markGiveawayEnded(
+            client,
+            giveawayId,
+            giveaway
+        );
+
+    if (!markedSuccess) {
+        logger.warn(
+            `Failed to mark ticket giveaway ${messageId} as ended`
+        );
+    }
+
+    if (winningTicket) {
+        const winnerMention =
+            `<@${winningTicket.userId}>`;
+
+        await channel.send({
+            content:
+                `🎉 **Giveaway Winner!**\n` +
+                `🎟️ Winning ticket: **#${winningTicket.number}**\n` +
+                `🏆 Winner: ${winnerMention}`,
+        });
+
+        try {
+            const winnerUser =
+                await client.users.fetch(
+                    winningTicket.userId
+                );
+
+            await winnerUser.send(
+                `🎉 You won the **${giveaway.prize || 'giveaway'}** in **${guild.name}**!\n\n` +
+                `🎟️ Winning ticket: **#${winningTicket.number}**\n` +
+                `Please contact <@${giveaway.hostId}> to claim your prize.`
+            );
+        } catch (dmError) {
+            logger.debug(
+                `Could not DM giveaway winner ${winningTicket.userId}:`,
+                dmError
+            );
+        }
+
+        try {
+            await logEvent({
+                client,
+                guildId,
+                eventType:
+                    EVENT_TYPES.GIVEAWAY_WINNER,
+
+                data: {
+                    description:
+                        `Emerald ticket giveaway ended with winning ticket #${winningTicket.number}`,
+
+                    channelId: channel.id,
+
+                    fields: [
+                        {
+                            name: '🎁 Prize',
+                            value:
+                                giveaway.prize ||
+                                'Mystery Prize',
+                            inline: true,
+                        },
+                        {
+                            name: '🎟️ Winning Ticket',
+                            value:
+                                `#${winningTicket.number}`,
+                            inline: true,
+                        },
+                        {
+                            name: '🏆 Winner',
+                            value:
+                                winnerMention,
+                            inline: true,
+                        },
+                        {
+                            name: '🎟️ Tickets',
+                            value:
+                                String(tickets.length),
+                            inline: true,
+                        },
+                    ],
+                },
+            });
+        } catch (logError) {
+            logger.debug(
+                'Error logging ticket giveaway winner:',
+                logError
+            );
+        }
+    } else {
+        await channel.send({
+            content:
+                `The giveaway for **${giveaway.prize || 'giveaway'}** has ended with no tickets sold.`,
+        });
+    }
+
+    logger.info(
+        `Ended Emerald ticket giveaway ${messageId} in guild ${guildId}`
+    );
+
+    continue;
+}
         const guild = client.guilds.cache.get(guildId);
         if (!guild) {
           logger.debug(`Guild ${guildId} not found, skipping giveaway ${messageId}`);
