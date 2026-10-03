@@ -132,6 +132,128 @@ export function validateWinnerCount(winnerCount) {
     }
 }
 
+export function createTicketGiveawayEmbed(
+    giveaway,
+    status,
+    winningTicket = null
+) {
+    const isEnded =
+        status === 'ended' ||
+        status === 'reroll';
+
+    const color = isEnded
+        ? getColor('giveaway.ended')
+        : getColor('giveaway.active');
+
+    const tickets = Array.isArray(giveaway.tickets)
+        ? giveaway.tickets
+        : [];
+
+    const ticketPrice = Number(
+        giveaway.ticketPrice || 100
+    );
+
+    const maxTickets = Number(
+        giveaway.maxTicketsPerUser || 5
+    );
+
+    const embed = new EmbedBuilder()
+        .setTitle('Giveaway')
+        .setDescription(
+            isEnded
+                ? 'This giveaway has ended.'
+                : `Buy a ticket for **${ticketPrice} Emeralds**. Each member can buy up to **${maxTickets} tickets**.`
+        )
+        .setColor(color)
+        .addFields(
+            {
+                name: '🎁 Prize',
+                value: giveaway.prize || 'Mystery Prize',
+                inline: false,
+            },
+            {
+                name: '💎 Ticket Price',
+                value: `${ticketPrice} Emeralds`,
+                inline: true,
+            },
+            {
+                name: '🎟️ Tickets Sold',
+                value: String(tickets.length),
+                inline: true,
+            },
+            {
+                name: '👤 Hosted by',
+                value: `<@${giveaway.hostId}>`,
+                inline: true,
+            },
+        );
+
+    if (isEnded) {
+        embed.addFields({
+            name: '🏆 Winning Ticket',
+            value: winningTicket
+                ? `#${winningTicket.number} — <@${winningTicket.userId}>`
+                : 'No valid tickets',
+            inline: false,
+        });
+    } else {
+        const endTime =
+            giveaway.endsAt ||
+            giveaway.endTime;
+
+        embed.addFields({
+            name: '⏰ Ends',
+            value: `<t:${Math.floor(
+                Number(endTime) / 1000
+            )}:R>`,
+            inline: false,
+        });
+    }
+
+    embed.setTimestamp();
+
+    return embed;
+}
+
+export function createTicketGiveawayButtons(
+    ended = false
+) {
+    const row = new ActionRowBuilder();
+
+    row.addComponents(
+        new ButtonBuilder()
+            .setCustomId('emerald_giveaway_buy')
+            .setLabel(
+                ended
+                    ? '🎟️ Giveaway Ended'
+                    : '🎟️ Buy Ticket — 100 Emeralds'
+            )
+            .setStyle(
+                ended
+                    ? ButtonStyle.Secondary
+                    : ButtonStyle.Primary
+            )
+            .setDisabled(ended)
+    );
+
+    return row;
+}
+
+export function selectTicketWinner(tickets) {
+    if (
+        !Array.isArray(tickets) ||
+        tickets.length === 0
+    ) {
+        return null;
+    }
+
+    return tickets[
+        Math.floor(
+            Math.random() * tickets.length
+        )
+    ];
+}
+
 export function createGiveawayEmbed(giveaway, status, winners = []) {
     try {
         const statusEmoji = status === 'ended' ? '🎉' : status === 'reroll' ? '🔄' : '🎉';
