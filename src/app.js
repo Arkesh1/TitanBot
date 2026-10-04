@@ -22,6 +22,9 @@ import { initializeMusic } from './services/music/riffySetup.js';
 import { shutdownMusic } from './services/music/playerHandler.js';
 import pkg from '../package.json' with { type: 'json' };
 import { EXPECTED_SCHEMA_VERSION, EXPECTED_SCHEMA_LABEL } from './config/database/schemaVersion.js';
+import {
+  startYouTubeNotifications
+} from './services/youtubeNotificationService.js';
 
 class TitanBot extends Client {
   constructor() {
@@ -105,6 +108,7 @@ class TitanBot extends Client {
       startupLog('Registering slash commands globally...');
       await this.registerCommands();
       startupLog('Slash commands registration complete');
+      startYouTubeNotifications(this);
 
       const databaseMode = dbStatus.isDegraded
         ? 'Optional in-memory mode (data resets after restart)'
