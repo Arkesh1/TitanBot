@@ -6,7 +6,7 @@ function getStoreKey(guildId) {
     return `${COMMAND_SETTINGS_KEY_PREFIX}${guildId}:command-settings`;
 }
 
-async function getCommandSettings(client, guildId) {
+async function getCommandSettingsStore(client, guildId) {
     try {
         const data = await client.db.get(getStoreKey(guildId));
 
@@ -21,7 +21,7 @@ async function getCommandSettings(client, guildId) {
     }
 }
 
-async function saveCommandSettings(client, guildId, data) {
+async function saveCommandSettingsStore(client, guildId, data) {
     try {
         await client.db.set(getStoreKey(guildId), data);
         return true;
@@ -36,31 +36,15 @@ export async function getCommandSettings(
     guildId,
     commandName
 ) {
-    const settings = await getCommandSettingsStore(client, guildId);
+    const settings = await getCommandSettingsStore(
+        client,
+        guildId
+    );
 
     return settings[commandName] || {
         channelId: null,
         visibility: 'public',
     };
-}
-
-async function getCommandSettingsStore(client, guildId) {
-    return getCommandSettingsRaw(client, guildId);
-}
-
-async function getCommandSettingsRaw(client, guildId) {
-    try {
-        const data = await client.db.get(getStoreKey(guildId));
-
-        if (!data || typeof data !== 'object') {
-            return {};
-        }
-
-        return data;
-    } catch (error) {
-        logger.error('Error loading command settings:', error);
-        return {};
-    }
 }
 
 export async function setCommandSettings(
@@ -69,7 +53,10 @@ export async function setCommandSettings(
     commandName,
     settings
 ) {
-    const current = await getCommandSettingsRaw(client, guildId);
+    const current = await getCommandSettingsStore(
+        client,
+        guildId
+    );
 
     current[commandName] = {
         channelId: settings.channelId || null,
@@ -79,7 +66,7 @@ export async function setCommandSettings(
                 : 'public',
     };
 
-    return saveCommandSettings(
+    return saveCommandSettingsStore(
         client,
         guildId,
         current
