@@ -9,25 +9,16 @@ export const botConfig = {
   // - "idle"      = yellow moon
   // - "dnd"       = red do-not-disturb
   // - "invisible" = appears offline
-  presence: {
-    // Current online state shown on Discord.
-    status: "online",
-
-    // Activity lines shown under the bot name.
-    // `type` number mapping from Discord:
-    // 0 = Playing
-    // 1 = Streaming
-    // 2 = Listening
-    // 3 = Watching
-    // 4 = Custom
-    // 5 = Competing
-    activities: [
-      {
-        name: "railway.com", // required by Discord API, not shown in the client
-        type: 2,               // Custom
-      },
-    ],
-  },
+presence: {
+  status: "online",
+  activities: [
+    {
+      name: "Custom Status",
+      state: "Powered By Railway.com",
+      type: 4,
+    },
+  ],
+},
 
   // =========================
   // COMMAND BEHAVIOR
