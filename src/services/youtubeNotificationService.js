@@ -12,7 +12,7 @@ const YOUTUBE_LAST_VIDEO_KEY =
     'youtube:filmy-steve:last-video-id';
 
 const NOTIFICATION_CHANNEL_NAME =
-    '📺│youtube';
+    '▶️│latest-video';
 
 async function fetchFeed() {
     const response = await fetch(
