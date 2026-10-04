@@ -93,9 +93,7 @@ export default {
     data: new SlashCommandBuilder()
         .setName('commandmenu')
         .setDescription('Manage command visibility and channels')
-        .setDefaultMemberPermissions(
-            PermissionFlagsBits.ManageGuild
-        ),
+
 
     async execute(interaction, guildConfig, client) {
         if (!interaction.inGuild()) {
