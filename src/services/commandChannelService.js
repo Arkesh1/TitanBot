@@ -1,35 +1,103 @@
 import { logger } from '../utils/logger.js';
 
-const COMMAND_CHANNEL_KEY_PREFIX = 'guild:';
+const COMMAND_SETTINGS_KEY_PREFIX = 'guild:';
 
 function getStoreKey(guildId) {
-    return `${COMMAND_CHANNEL_KEY_PREFIX}${guildId}:command-channels`;
+    return `${COMMAND_SETTINGS_KEY_PREFIX}${guildId}:command-settings`;
 }
 
-async function getCommandChannels(client, guildId) {
+async function getCommandSettings(client, guildId) {
     try {
         const data = await client.db.get(getStoreKey(guildId));
-        return data && typeof data === 'object' ? data : {};
+
+        if (!data || typeof data !== 'object') {
+            return {};
+        }
+
+        return data;
     } catch (error) {
-        logger.error('Error loading command channel settings:', error);
+        logger.error('Error loading command settings:', error);
         return {};
     }
 }
 
-async function saveCommandChannels(client, guildId, data) {
+async function saveCommandSettings(client, guildId, data) {
     try {
         await client.db.set(getStoreKey(guildId), data);
         return true;
     } catch (error) {
-        logger.error('Error saving command channel settings:', error);
+        logger.error('Error saving command settings:', error);
         return false;
     }
 }
 
-export async function getCommandChannel(client, guildId, commandName) {
-    const settings = await getCommandChannels(client, guildId);
+export async function getCommandSettings(
+    client,
+    guildId,
+    commandName
+) {
+    const settings = await getCommandSettingsStore(client, guildId);
 
-    return settings[commandName] || null;
+    return settings[commandName] || {
+        channelId: null,
+        visibility: 'public',
+    };
+}
+
+async function getCommandSettingsStore(client, guildId) {
+    return getCommandSettingsRaw(client, guildId);
+}
+
+async function getCommandSettingsRaw(client, guildId) {
+    try {
+        const data = await client.db.get(getStoreKey(guildId));
+
+        if (!data || typeof data !== 'object') {
+            return {};
+        }
+
+        return data;
+    } catch (error) {
+        logger.error('Error loading command settings:', error);
+        return {};
+    }
+}
+
+export async function setCommandSettings(
+    client,
+    guildId,
+    commandName,
+    settings
+) {
+    const current = await getCommandSettingsRaw(client, guildId);
+
+    current[commandName] = {
+        channelId: settings.channelId || null,
+        visibility:
+            settings.visibility === 'private'
+                ? 'private'
+                : 'public',
+    };
+
+    return saveCommandSettings(
+        client,
+        guildId,
+        current
+    );
+}
+
+export async function getCommandChannel(
+    client,
+    guildId,
+    commandName
+) {
+    const settings = await getCommandSettings(
+        client,
+        guildId,
+        commandName
+    );
+
+    return settings.channelId || null;
 }
 
 export async function setCommandChannel(
@@ -38,15 +106,21 @@ export async function setCommandChannel(
     commandName,
     channelId
 ) {
-    const settings = await getCommandChannels(client, guildId);
+    const current = await getCommandSettings(
+        client,
+        guildId,
+        commandName
+    );
 
-    if (channelId) {
-        settings[commandName] = channelId;
-    } else {
-        delete settings[commandName];
-    }
-
-    return saveCommandChannels(client, guildId, settings);
+    return setCommandSettings(
+        client,
+        guildId,
+        commandName,
+        {
+            channelId,
+            visibility: current.visibility,
+        }
+    );
 }
 
 export async function clearCommandChannel(
