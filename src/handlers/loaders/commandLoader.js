@@ -223,17 +223,50 @@ function validateCommands(commands) {
 
 function prepareCommandsForRegistration(commands) {
     if (commands.length >= COMMAND_COUNT_WARN_THRESHOLD) {
-        logger.warn(`Command count (${commands.length}) is near Discord's ${MAX_COMMANDS} global command limit`);
+        logger.warn(
+            `Command count (${commands.length}) is near Discord's ${MAX_COMMANDS} global command limit`
+        );
     }
 
     if (commands.length <= MAX_COMMANDS) {
         return commands;
     }
 
-    logger.warn(`Command count (${commands.length}) exceeds Discord limit (${MAX_COMMANDS}), truncating...`);
-    const truncated = commands.slice(0, MAX_COMMANDS);
-    logger.info(`Truncated to ${truncated.length} commands for registration`);
-    return truncated;
+    logger.warn(
+        `Command count (${commands.length}) exceeds Discord limit (${MAX_COMMANDS}).`
+    );
+
+    const priorityCommands = [
+        'commandmenu',
+    ];
+
+    const priority = [];
+    const remaining = [];
+
+    for (const command of commands) {
+        if (priorityCommands.includes(command.name)) {
+            priority.push(command);
+        } else {
+            remaining.push(command);
+        }
+    }
+
+    const commandsToRegister = [
+        ...priority,
+        ...remaining,
+    ].slice(0, MAX_COMMANDS);
+
+    logger.info(
+        `Registered priority commands: ${priority
+            .map(command => command.name)
+            .join(', ') || 'none'}`
+    );
+
+    logger.info(
+        `Registered ${commandsToRegister.length} commands after applying priority`
+    );
+
+    return commandsToRegister;
 }
 
 async function registerGlobalCommands(client, clientId, commands, totalSubcommands) {
