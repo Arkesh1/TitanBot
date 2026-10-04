@@ -15,6 +15,7 @@ import { createInteractionTraceContext, runWithTraceContext } from '../utils/log
 import { validateChatInputPayloadOrThrow } from '../utils/commandInputValidation.js';
 import { enforceAbuseProtection, formatCooldownDuration } from '../utils/abuseProtection.js';
 import { isCommandEnabled } from '../services/commandAccessService.js';
+import { getCommandChannel } from '../services/commandChannelService.js';
 import { resolveSlashAccessKey } from '../utils/messageAdapter.js';
 import { isCollectorManagedComponent } from '../utils/collectorComponents.js';
 import { ResponseCoordinator } from '../utils/responseCoordinator.js';
@@ -152,15 +153,46 @@ export default {
               }
             }
 
-            const permissionAllowed = await enforceDefaultCommandPermissions(interaction, command, {
-              source: 'interactionCreate',
-              guildConfig,
-            });
-            if (!permissionAllowed) {
-              return;
-            }
+const permissionAllowed = await enforceDefaultCommandPermissions(
+    interaction,
+    command,
+    {
+        source: 'interactionCreate',
+        guildConfig,
+    }
+);
 
-            await command.execute(interaction, guildConfig, client);
+if (!permissionAllowed) {
+    return;
+}
+
+// Check whether this command is restricted to a specific channel.
+const allowedChannelId = await getCommandChannel(
+    client,
+    interaction.guild.id,
+    interaction.commandName
+);
+
+if (
+    allowedChannelId &&
+    interaction.channelId !== allowedChannelId
+) {
+    throw createError(
+        `Command /${interaction.commandName} is restricted to channel ${allowedChannelId}`,
+        ErrorTypes.CONFIGURATION,
+        `❌ You can only use **/${interaction.commandName}** in <#${allowedChannelId}>.`,
+        withTraceContext(
+            {
+                commandName: interaction.commandName,
+                allowedChannelId,
+                currentChannelId: interaction.channelId,
+            },
+            interactionTraceContext
+        )
+    );
+}
+
+await command.execute(interaction, guildConfig, client);
           } catch (error) {
             await handleInteractionError(interaction, error, withTraceContext({
               type: 'command',
