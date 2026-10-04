@@ -102,6 +102,111 @@ async function ensureTicketPermission(interaction, client, actionLabel, options 
   return context;
 }
 
+const createSponsorshipTicketHandler = {
+  name: 'create_sponsorship_ticket',
+
+  async execute(interaction, client) {
+    try {
+      if (!(await ensureGuildContext(interaction))) return;
+
+      const rateLimitKey = `${interaction.user.id}:create_sponsorship_ticket`;
+      const allowed = await checkRateLimit(rateLimitKey, 3, 60000);
+
+      if (!allowed) {
+        await replyUserError(interaction, {
+          type: ErrorTypes.RATE_LIMIT,
+          message: 'You are creating tickets too quickly. Please wait a minute and try again.'
+        });
+        return;
+      }
+
+      const config = await getGuildConfig(client, interaction.guildId);
+      const maxTicketsPerUser = config.maxTicketsPerUser || 3;
+
+      const { getUserTicketCount } = await import('../services/ticket.js');
+
+      const currentTicketCount = await getUserTicketCount(
+        interaction.guildId,
+        interaction.user.id
+      );
+
+      if (currentTicketCount >= maxTicketsPerUser) {
+        return await replyUserError(interaction, {
+          type: ErrorTypes.UNKNOWN,
+          message:
+            `You have reached the maximum number of open tickets (${maxTicketsPerUser}).\n\n` +
+            `Please close your existing tickets before creating a new one.\n\n` +
+            `**Current Tickets:** ${currentTicketCount}/${maxTicketsPerUser}`
+        });
+      }
+
+      const modal = new ModalBuilder()
+        .setCustomId('create_sponsorship_ticket_modal')
+        .setTitle('Sponsorship Inquiry');
+
+      const companyInput = new TextInputBuilder()
+        .setCustomId('company')
+        .setLabel('Company / Brand')
+        .setStyle(TextInputStyle.Short)
+        .setPlaceholder('Your company or brand name')
+        .setRequired(true)
+        .setMaxLength(100);
+
+      const contactInput = new TextInputBuilder()
+        .setCustomId('contact')
+        .setLabel('Contact Name')
+        .setStyle(TextInputStyle.Short)
+        .setPlaceholder('Your name')
+        .setRequired(true)
+        .setMaxLength(100);
+
+      const emailInput = new TextInputBuilder()
+        .setCustomId('email')
+        .setLabel('Email')
+        .setStyle(TextInputStyle.Short)
+        .setPlaceholder('business@example.com')
+        .setRequired(true)
+        .setMaxLength(150);
+
+      const promotionInput = new TextInputBuilder()
+        .setCustomId('promotion')
+        .setLabel('What would you like promoted?')
+        .setStyle(TextInputStyle.Paragraph)
+        .setPlaceholder('Tell us about the product, service, or campaign...')
+        .setRequired(true)
+        .setMaxLength(1000);
+
+      const detailsInput = new TextInputBuilder()
+        .setCustomId('details')
+        .setLabel('Campaign Details / Budget')
+        .setStyle(TextInputStyle.Paragraph)
+        .setPlaceholder('Campaign goals, timeline, budget, requirements, etc.')
+        .setRequired(true)
+        .setMaxLength(1500);
+
+      modal.addComponents(
+        new ActionRowBuilder().addComponents(companyInput),
+        new ActionRowBuilder().addComponents(contactInput),
+        new ActionRowBuilder().addComponents(emailInput),
+        new ActionRowBuilder().addComponents(promotionInput),
+        new ActionRowBuilder().addComponents(detailsInput)
+      );
+
+      await interaction.showModal(modal);
+
+    } catch (error) {
+      logger.error('Error creating sponsorship ticket modal:', error);
+
+      if (!interaction.replied && !interaction.deferred) {
+        await replyUserError(interaction, {
+          type: ErrorTypes.UNKNOWN,
+          message: 'Could not open the sponsorship form.'
+        });
+      }
+    }
+  }
+};
+
 const createTicketHandler = {
   name: 'create_ticket',
   async execute(interaction, client) {
@@ -474,6 +579,7 @@ const deleteTicketHandler = {
 export default createTicketHandler;
 export { 
   createTicketModalHandler, 
+  createSponsorshipTicketHandler,
   closeTicketModalHandler,
   closeTicketHandler, 
   claimTicketHandler, 
