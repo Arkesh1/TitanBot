@@ -14,7 +14,7 @@ presence: {
   activities: [
     {
       name: "Custom Status",
-      state: "Powered By Railway.com",
+      state: "Powered By Railway!",
       type: 4,
     },
   ],
