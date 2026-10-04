@@ -101,17 +101,8 @@ class TitanBot extends Client {
       startupLog('Logging into Discord...');
       await this.login(this.config.bot.token);
       startupLog('Discord login successful');
-this.user.setPresence({
-  activities: [
-    {
-      name: 'railway.com',
-      type: 2 // Watching
-    }
-  ],
-  status: 'online'
-});
 
-startupLog('Discord activity set');
+
       // Initialize invite tracking
       await this.initializeInviteTracking();
 
