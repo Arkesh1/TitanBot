@@ -142,13 +142,19 @@ description: panelMessage,
                 color: getColor('info')
             });
 
-            const ticketButton = new ActionRowBuilder().addComponents(
-                new ButtonBuilder()
-                    .setCustomId("create_ticket")
-.setLabel(buttonLabel)
-                    .setStyle(ButtonStyle.Primary)
-                    .setEmoji("📩"),
-            );
+const ticketButton = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+        .setCustomId("create_ticket")
+        .setLabel(buttonLabel)
+        .setStyle(ButtonStyle.Primary)
+        .setEmoji("📩"),
+
+    new ButtonBuilder()
+        .setCustomId("create_sponsorship_ticket")
+        .setLabel("Sponsorship")
+        .setStyle(ButtonStyle.Secondary)
+        .setEmoji("🤝"),
+);
 
             try {
                 const sentPanel = await panelChannel.send({
