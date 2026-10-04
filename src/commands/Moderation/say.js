@@ -1,134 +1,113 @@
 import {
     SlashCommandBuilder,
     PermissionFlagsBits,
-    ChannelType,
+    ModalBuilder,
+    TextInputBuilder,
+    TextInputStyle,
+    ActionRowBuilder,
     MessageFlags,
 } from 'discord.js';
-import { successEmbed } from '../../utils/embeds.js';
-import { logEvent } from '../../utils/moderation.js';
-import { logger } from '../../utils/logger.js';
-import { InteractionHelper } from '../../utils/interactionHelper.js';
-import { replyUserError, ErrorTypes } from '../../utils/errorHandler.js';
-import { sanitizeInput } from '../../utils/validation.js';
-
-const TEXT_CHANNEL_TYPES = [
-    ChannelType.GuildText,
-    ChannelType.GuildAnnouncement,
-];
-
-function resolveTargetChannel(interaction) {
-    const selected = interaction.options.getChannel('channel');
-    if (selected) {
-        return selected;
-    }
-
-    if (!interaction.channel || !TEXT_CHANNEL_TYPES.includes(interaction.channel.type)) {
-        return null;
-    }
-
-    return interaction.channel;
-}
 
 export default {
     data: new SlashCommandBuilder()
         .setName('say')
-        .setDescription('Send a plain message as the bot')
-        .addStringOption((option) =>
-            option
-                .setName('message')
-                .setDescription('The message the bot should send')
-                .setRequired(true)
-                .setMaxLength(2000),
-        )
-        .addChannelOption((option) =>
-            option
-                .setName('channel')
-                .setDescription('Channel to send in (defaults to the current channel)')
-                .addChannelTypes(...TEXT_CHANNEL_TYPES)
-                .setRequired(false),
-        )
-        .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages)
-        .setDMPermission(false),
-    category: 'moderation',
-    abuseProtection: { maxAttempts: 8, windowMs: 60_000 },
+        .setDescription('Send a message as Iron Golem')
+        .setDefaultMemberPermissions(
+            PermissionFlagsBits.ManageGuild
+        ),
 
-    async execute(interaction, _config, client) {
-        const deferSuccess = await InteractionHelper.safeDefer(interaction, {
-            flags: MessageFlags.Ephemeral,
-        });
-        if (!deferSuccess) {
-            logger.warn('Say interaction defer failed', {
-                userId: interaction.user.id,
-                guildId: interaction.guildId,
-                commandName: 'say',
-            });
-            return;
-        }
-
-        const rawMessage = interaction.options.getString('message');
-        const message = sanitizeInput(rawMessage, 2000);
-
-        if (!message) {
-            return replyUserError(interaction, {
-                type: ErrorTypes.VALIDATION,
-                message: 'Message cannot be empty.',
+    async execute(interaction) {
+        if (!interaction.inGuild()) {
+            return interaction.reply({
+                content:
+                    '❌ This command can only be used in a server.',
+                flags: MessageFlags.Ephemeral,
             });
         }
 
-        const channel = resolveTargetChannel(interaction);
-        if (!channel) {
-            return replyUserError(interaction, {
-                type: ErrorTypes.VALIDATION,
-                message: 'Choose a text channel or run this command in one.',
+        if (
+            !interaction.member.permissions.has(
+                PermissionFlagsBits.ManageGuild
+            )
+        ) {
+            return interaction.reply({
+                content:
+                    '❌ You need the Manage Server permission.',
+                flags: MessageFlags.Ephemeral,
             });
         }
 
-        const memberPermissions = channel.permissionsFor(interaction.member);
-        const botPermissions = channel.permissionsFor(interaction.guild.members.me);
+        const modal = new ModalBuilder()
+            .setCustomId('say_message_modal')
+            .setTitle('Send Message');
 
-        if (!memberPermissions?.has(PermissionFlagsBits.SendMessages)) {
-            return replyUserError(interaction, {
-                type: ErrorTypes.PERMISSION,
-                message: `You do not have permission to send messages in ${channel}.`,
+        const messageInput = new TextInputBuilder()
+            .setCustomId('say_message')
+            .setLabel('Message')
+            .setStyle(TextInputStyle.Paragraph)
+            .setPlaceholder(
+                'Type your message here...'
+            )
+            .setRequired(true)
+            .setMaxLength(2000);
+
+        const row = new ActionRowBuilder()
+            .addComponents(messageInput);
+
+        modal.addComponents(row);
+
+        await interaction.showModal(modal);
+
+        try {
+            const modalInteraction =
+                await interaction.awaitModalSubmit({
+                    time: 5 * 60 * 1000,
+
+                    filter: (submitted) =>
+                        submitted.customId ===
+                            'say_message_modal' &&
+                        submitted.user.id ===
+                            interaction.user.id,
+                });
+
+            const message =
+                modalInteraction.fields.getTextInputValue(
+                    'say_message'
+                );
+
+            if (!message.trim()) {
+                return modalInteraction.reply({
+                    content:
+                        '❌ Message cannot be empty.',
+                    flags: MessageFlags.Ephemeral,
+                });
+            }
+
+            if (!interaction.channel) {
+                return modalInteraction.reply({
+                    content:
+                        '❌ This channel is unavailable.',
+                    flags: MessageFlags.Ephemeral,
+                });
+            }
+
+            await interaction.channel.send({
+                content: message,
             });
-        }
 
-        if (!botPermissions?.has(PermissionFlagsBits.SendMessages)) {
-            return replyUserError(interaction, {
-                type: ErrorTypes.PERMISSION,
-                message: `I do not have permission to send messages in ${channel}.`,
+            await modalInteraction.reply({
+                content: '✅ Message sent.',
+                flags: MessageFlags.Ephemeral,
             });
+        } catch (error) {
+            if (error?.code === 'InteractionCollectorError') {
+                return;
+            }
+
+            console.error(
+                'Error in /say command:',
+                error
+            );
         }
-
-        const sentMessage = await channel.send({ content: message });
-
-        await logEvent({
-            client,
-            guild: interaction.guild,
-            event: {
-                action: 'Bot Message Sent',
-                target: `${channel} (${channel.id})`,
-                executor: `${interaction.user.tag} (${interaction.user.id})`,
-                reason: message.length > 200
-                    ? `${message.slice(0, 197)}...`
-                    : message,
-                metadata: {
-                    channelId: channel.id,
-                    messageId: sentMessage.id,
-                    moderatorId: interaction.user.id,
-                    messageLength: message.length,
-                },
-            },
-        });
-
-        await InteractionHelper.safeEditReply(interaction, {
-            embeds: [
-                successEmbed(
-                    'Message Sent',
-                    `Posted in ${channel}. [Jump to message](${sentMessage.url})`,
-                ),
-            ],
-            flags: MessageFlags.Ephemeral,
-        });
     },
 };
