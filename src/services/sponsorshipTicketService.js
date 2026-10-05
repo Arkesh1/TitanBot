@@ -15,6 +15,41 @@ function getSettingsKey(guildId) {
     return `${SETTINGS_PREFIX}${guildId}:sponsorship-settings`;
 }
 
+const DEFAULT_SPONSORSHIP_STAFF_ROLES = [
+    'FILMY STEVE',
+    'ADMIN',
+];
+
+export function getSponsorshipStaffRoles(guild, additionalRoleId = null) {
+    const roleIds = new Set();
+
+    for (const role of guild.roles.cache.values()) {
+        if (DEFAULT_SPONSORSHIP_STAFF_ROLES.includes(role.name)) {
+            roleIds.add(role.id);
+        }
+    }
+
+    if (additionalRoleId) {
+        roleIds.add(additionalRoleId);
+    }
+
+    return [...roleIds];
+}
+
+export function isSponsorshipStaff(interaction, settings) {
+    const memberRoles = interaction.member.roles.cache;
+
+    const hasDefaultRole = [...memberRoles.values()].some(role =>
+        DEFAULT_SPONSORSHIP_STAFF_ROLES.includes(role.name)
+    );
+
+    const hasAdditionalRole =
+        settings.staffRoleId &&
+        memberRoles.has(settings.staffRoleId);
+
+    return hasDefaultRole || hasAdditionalRole;
+}
+
 export async function getSponsorshipSettings(client, guildId) {
     try {
         const data = await client.db.get(getSettingsKey(guildId));
@@ -175,19 +210,24 @@ export async function createSponsorshipChannel(
         },
     ];
 
-    if (settings.staffRoleId) {
-        permissionOverwrites.push({
-            id: settings.staffRoleId,
-            allow: [
-                PermissionFlagsBits.ViewChannel,
-                PermissionFlagsBits.SendMessages,
-                PermissionFlagsBits.ReadMessageHistory,
-                PermissionFlagsBits.AttachFiles,
-                PermissionFlagsBits.EmbedLinks,
-                PermissionFlagsBits.ManageMessages,
-            ],
-        });
-    }
+ const staffRoleIds = getSponsorshipStaffRoles(
+    guild,
+    settings.staffRoleId
+);
+
+for (const staffRoleId of staffRoleIds) {
+    permissionOverwrites.push({
+        id: staffRoleId,
+        allow: [
+            PermissionFlagsBits.ViewChannel,
+            PermissionFlagsBits.SendMessages,
+            PermissionFlagsBits.ReadMessageHistory,
+            PermissionFlagsBits.AttachFiles,
+            PermissionFlagsBits.EmbedLinks,
+            PermissionFlagsBits.ManageMessages,
+        ],
+    });
+}
 
     const channel = await guild.channels.create({
         name: channelName,
