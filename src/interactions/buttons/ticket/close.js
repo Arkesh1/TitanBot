@@ -1,5 +1,6 @@
 import {
     getSponsorshipSettings,
+    isSponsorshipStaff,
     getSponsorshipOwnerId,
 } from '../../../services/sponsorshipTicketService.js';
 
@@ -12,16 +13,12 @@ export default {
             interaction.guild.id
         );
 
-        if (
-            !settings.staffRoleId ||
-            !interaction.member.roles.cache.has(settings.staffRoleId)
-        ) {
-            return interaction.reply({
-                content:
-                    '❌ You do not have permission to close sponsorship tickets.',
-                ephemeral: true,
-            });
-        }
+       if (!isSponsorshipStaff(interaction, settings)) {
+    return interaction.reply({
+        content: '❌ You do not have permission to use this button.',
+        ephemeral: true,
+    });
+}
 
         const ownerId = getSponsorshipOwnerId(
             interaction.channel
