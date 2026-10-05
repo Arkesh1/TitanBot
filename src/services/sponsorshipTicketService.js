@@ -285,6 +285,68 @@ for (const staffRoleId of staffRoleIds) {
         embeds: [embed],
         components: [controls],
     });
+const staffRoleIds = getSponsorshipStaffRoles(
+    guild,
+    settings.staffRoleId
+);
 
+const dmEmbed = new EmbedBuilder()
+    .setColor(0xf39c12)
+    .setTitle('🤝 New Sponsorship Inquiry')
+    .setDescription(
+        `A new sponsorship inquiry has been submitted by **${interaction.user.tag}**.`
+    )
+    .addFields(
+        {
+            name: '🏢 Company / Brand',
+            value: data.company,
+            inline: true,
+        },
+        {
+            name: '👤 Contact Name',
+            value: data.contact,
+            inline: true,
+        },
+        {
+            name: '📧 Email',
+            value: data.email,
+            inline: false,
+        },
+        {
+            name: '📢 Promotion',
+            value: data.promotion,
+            inline: false,
+        },
+        {
+            name: '💼 Campaign / Budget',
+            value: data.details,
+            inline: false,
+        },
+        {
+            name: '🎫 Ticket',
+            value: `<#${channel.id}>`,
+            inline: false,
+        }
+    )
+    .setFooter({
+        text: 'Filmy Steve • Sponsorships',
+    })
+    .setTimestamp();
+
+for (const roleId of staffRoleIds) {
+    const role = guild.roles.cache.get(roleId);
+
+    if (!role) continue;
+
+    for (const member of role.members.values()) {
+        try {
+            await member.send({
+                embeds: [dmEmbed],
+            });
+        } catch {
+            // Ignore members with DMs disabled.
+        }
+    }
+}
     return channel;
 }
