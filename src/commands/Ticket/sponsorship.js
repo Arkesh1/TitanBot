@@ -19,24 +19,43 @@ export default {
             subcommand
                 .setName('setup')
                 .setDescription('Set up the sponsorship inquiry system')
+
                 .addChannelOption((option) =>
                     option
                         .setName('panel_channel')
-                        .setDescription('Channel where the sponsorship panel will be posted')
+                        .setDescription(
+                            'Channel where the sponsorship panel will be posted'
+                        )
                         .addChannelTypes(ChannelType.GuildText)
                         .setRequired(true)
                 )
+
                 .addChannelOption((option) =>
                     option
                         .setName('category')
-                        .setDescription('Category where sponsorship tickets will be created')
+                        .setDescription(
+                            'Category where open sponsorship tickets are created'
+                        )
                         .addChannelTypes(ChannelType.GuildCategory)
                         .setRequired(true)
                 )
+
+                .addChannelOption((option) =>
+                    option
+                        .setName('closed_category')
+                        .setDescription(
+                            'Category where closed sponsorship tickets are moved'
+                        )
+                        .addChannelTypes(ChannelType.GuildCategory)
+                        .setRequired(true)
+                )
+
                 .addRoleOption((option) =>
                     option
                         .setName('staff_role')
-                        .setDescription('Role that can access sponsorship tickets')
+                        .setDescription(
+                            'Role that can access sponsorship tickets'
+                        )
                         .setRequired(true)
                 )
         ),
@@ -47,6 +66,9 @@ export default {
 
         const category =
             interaction.options.getChannel('category');
+
+        const closedCategory =
+            interaction.options.getChannel('closed_category');
 
         const staffRole =
             interaction.options.getRole('staff_role');
@@ -63,12 +85,14 @@ export default {
                     panelChannelId: panelChannel.id,
                     panelMessageId: panel.id,
                     categoryId: category.id,
+                    closedCategoryId: closedCategory.id,
                     staffRoleId: staffRole.id,
                 }
             );
 
             if (!saved) {
                 await panel.delete().catch(() => {});
+
                 throw new Error(
                     'Could not save sponsorship settings.'
                 );
@@ -78,7 +102,8 @@ export default {
                 content:
                     `✅ **Sponsorship system configured!**\n\n` +
                     `📋 Panel: ${panelChannel}\n` +
-                    `📁 Category: ${category}\n` +
+                    `📁 Open Category: ${category}\n` +
+                    `📁 Closed Category: ${closedCategory}\n` +
                     `👥 Staff Role: ${staffRole}`,
                 ephemeral: true,
             });
