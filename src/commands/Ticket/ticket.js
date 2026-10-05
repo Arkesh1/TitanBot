@@ -149,11 +149,7 @@ const ticketButton = new ActionRowBuilder().addComponents(
         .setStyle(ButtonStyle.Primary)
         .setEmoji("📩"),
 
-    new ButtonBuilder()
-        .setCustomId("create_sponsorship_ticket")
-        .setLabel("Sponsorship")
-        .setStyle(ButtonStyle.Secondary)
-        .setEmoji("🤝"),
+
 );
 
             try {
