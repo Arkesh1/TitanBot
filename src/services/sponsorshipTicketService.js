@@ -29,7 +29,13 @@ export async function getSponsorshipSettings(client, guildId) {
             };
         }
 
-        return data;
+        return {
+            panelChannelId: data.panelChannelId || null,
+            panelMessageId: data.panelMessageId || null,
+            categoryId: data.categoryId || null,
+            closedCategoryId: data.closedCategoryId || null,
+            staffRoleId: data.staffRoleId || null,
+        };
     } catch (error) {
         logger.error('Error loading sponsorship settings:', error);
 
@@ -94,6 +100,48 @@ export function createSponsorshipPanel() {
     };
 }
 
+export function createOpenSponsorshipControls() {
+    return new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+            .setCustomId('sponsorship_claim')
+            .setLabel('Claim')
+            .setStyle(ButtonStyle.Primary)
+            .setEmoji('🙋'),
+
+        new ButtonBuilder()
+            .setCustomId('sponsorship_close')
+            .setLabel('Close')
+            .setStyle(ButtonStyle.Danger)
+            .setEmoji('🔒')
+    );
+}
+
+export function createClosedSponsorshipControls() {
+    return new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+            .setCustomId('sponsorship_reopen')
+            .setLabel('Reopen')
+            .setStyle(ButtonStyle.Success)
+            .setEmoji('🔓'),
+
+        new ButtonBuilder()
+            .setCustomId('sponsorship_delete')
+            .setLabel('Delete')
+            .setStyle(ButtonStyle.Danger)
+            .setEmoji('🗑️')
+    );
+}
+
+export function getSponsorshipOwnerId(channel) {
+    const topic = channel.topic || '';
+
+    const match = topic.match(
+        /sponsorship-owner:(\d+)/
+    );
+
+    return match ? match[1] : null;
+}
+
 export async function createSponsorshipChannel(
     interaction,
     settings,
@@ -146,7 +194,9 @@ export async function createSponsorshipChannel(
         type: ChannelType.GuildText,
         parent: settings.categoryId || null,
         permissionOverwrites,
-        topic: `Sponsorship inquiry by ${interaction.user.tag}`,
+        topic:
+            `sponsorship-owner:${interaction.user.id} | ` +
+            `Sponsorship inquiry by ${interaction.user.tag}`,
     });
 
     const embed = new EmbedBuilder()
@@ -188,19 +238,7 @@ export async function createSponsorshipChannel(
         })
         .setTimestamp();
 
-    const controls = new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-            .setCustomId('sponsorship_claim')
-            .setLabel('Claim')
-            .setStyle(ButtonStyle.Primary)
-            .setEmoji('🙋'),
-
-        new ButtonBuilder()
-            .setCustomId('sponsorship_close')
-            .setLabel('Close')
-            .setStyle(ButtonStyle.Danger)
-            .setEmoji('🔒')
-    );
+    const controls = createOpenSponsorshipControls();
 
     await channel.send({
         content: `${interaction.user}`,
