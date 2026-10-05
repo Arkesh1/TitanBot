@@ -1,5 +1,6 @@
 import {
     getSponsorshipSettings,
+        isSponsorshipStaff,
 } from '../../../services/sponsorshipTicketService.js';
 
 export default {
@@ -11,16 +12,12 @@ export default {
             interaction.guild.id
         );
 
-        if (
-            !settings.staffRoleId ||
-            !interaction.member.roles.cache.has(settings.staffRoleId)
-        ) {
-            return interaction.reply({
-                content:
-                    '❌ You do not have permission to claim sponsorship tickets.',
-                ephemeral: true,
-            });
-        }
+if (!isSponsorshipStaff(interaction, settings)) {
+    return interaction.reply({
+        content: '❌ You do not have permission to use this button.',
+        ephemeral: true,
+    });
+}
 
         await interaction.channel.send(
             `🙋 **${interaction.user} claimed this sponsorship inquiry.**`
