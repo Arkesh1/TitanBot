@@ -237,7 +237,7 @@ function prepareCommandsForRegistration(commands) {
     );
 
     const priorityCommands = [
-        'commandmenu',
+            'sponsorship',
     ];
 
     const priority = [];
