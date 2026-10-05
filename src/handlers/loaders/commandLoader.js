@@ -236,12 +236,10 @@ function prepareCommandsForRegistration(commands) {
         `Command count (${commands.length}) exceeds Discord limit (${MAX_COMMANDS}).`
     );
 
-    const priorityCommands = [
-            'sponsorship',
-    ];
 
-    const priority = [];
-    const remaining = [];
+
+    const priority = [ 'sponsorship',];
+    const remaining = ['beg','crime','daily','fish','gamble'];
 
     for (const command of commands) {
         if (priorityCommands.includes(command.name)) {
