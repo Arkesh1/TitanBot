@@ -36,8 +36,6 @@ import {
   recordCorrectCount
 } from '../services/countingGameService.js';
 
-const MESSAGE_XP_RATE_LIMIT_ATTEMPTS = 12;
-const MESSAGE_XP_RATE_LIMIT_WINDOW_MS = 10000;
 
 // Random Emerald reward system
 const MESSAGE_XP_RATE_LIMIT_ATTEMPTS = 12;
