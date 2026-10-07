@@ -40,8 +40,13 @@ const MESSAGE_XP_RATE_LIMIT_ATTEMPTS = 12;
 const MESSAGE_XP_RATE_LIMIT_WINDOW_MS = 10000;
 
 // Random Emerald reward system
+const MESSAGE_XP_RATE_LIMIT_ATTEMPTS = 12;
+const MESSAGE_XP_RATE_LIMIT_WINDOW_MS = 10000;
+
+// Random Emerald reward system
 const emeraldRewardCooldowns = new Map();
 const EMERALD_REWARD_COOLDOWN_MS = 60 * 1000;
+
 
 export default {
   name: Events.MessageCreate,
