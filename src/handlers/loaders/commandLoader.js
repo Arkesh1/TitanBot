@@ -236,13 +236,17 @@ function prepareCommandsForRegistration(commands) {
         `Command count (${commands.length}) exceeds Discord limit (${MAX_COMMANDS}).`
     );
 
+    const priorityCommands = [
+        'add',
+        'commandmenu',
+        'sponsorship',
+    ];
 
-
-    const priority = [ 'sponsorship'];
-    const remaining = ['beg','crime','daily','fish','gamble'];
+    const priority = [];
+    const remaining = [];
 
     for (const command of commands) {
-        if (priority.includes(command.name)) {
+        if (priorityCommands.includes(command.name)) {
             priority.push(command);
         } else {
             remaining.push(command);
@@ -255,9 +259,9 @@ function prepareCommandsForRegistration(commands) {
     ].slice(0, MAX_COMMANDS);
 
     logger.info(
-        `Registered priority commands: ${priority
-            .map(command => command.name)
-            .join(', ') || 'none'}`
+        `Registered priority commands: ${
+            priority.map(command => command.name).join(', ') || 'none'
+        }`
     );
 
     logger.info(
@@ -266,7 +270,6 @@ function prepareCommandsForRegistration(commands) {
 
     return commandsToRegister;
 }
-
 async function registerGlobalCommands(client, clientId, commands, totalSubcommands) {
     if (!clientId) {
         throw new Error('CLIENT_ID is required for slash command registration');
