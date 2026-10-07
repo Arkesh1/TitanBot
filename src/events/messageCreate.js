@@ -5,8 +5,15 @@ import { getLevelingConfig, getUserLevelData } from '../services/leveling/leveli
 import { addXp } from '../services/leveling/xpSystem.js';
 import { checkRateLimit } from '../utils/rateLimiter.js';
 import { parsePrefixCommand } from '../utils/prefixParser.js';
-import { supportsPrefixExecution, executePrefixCommand, resolvePrefixAccessKey } from '../utils/messageAdapter.js';
-import { resolveCommandAlias, resolveSubcommandAlias } from '../config/commands/commandAliases.js';
+import {
+  supportsPrefixExecution,
+  executePrefixCommand,
+  resolvePrefixAccessKey
+} from '../utils/messageAdapter.js';
+import {
+  resolveCommandAlias,
+  resolveSubcommandAlias
+} from '../config/commands/commandAliases.js';
 import { getPrefixRestriction } from '../config/commands/prefixRestrictions.js';
 import { getGuildConfig } from '../services/config/guildConfig.js';
 import {
@@ -16,18 +23,25 @@ import {
   isCommandCategoryEnabled,
   isMaintenanceMode
 } from '../config/bot.js';
-import { enforceAbuseProtection, formatCooldownDuration } from '../utils/abuseProtection.js';
+import {
+  enforceAbuseProtection,
+  formatCooldownDuration
+} from '../utils/abuseProtection.js';
 import { createEmbed } from '../utils/embeds.js';
 import { isCommandEnabled } from '../services/commandAccessService.js';
 import {
   getCountingGameConfig,
   saveCountingGameConfig,
   isValidCountingMessage,
-  recordCorrectCount,
+  recordCorrectCount
 } from '../services/countingGameService.js';
 
 const MESSAGE_XP_RATE_LIMIT_ATTEMPTS = 12;
 const MESSAGE_XP_RATE_LIMIT_WINDOW_MS = 10000;
+
+// Random Emerald reward system
+const emeraldRewardCooldowns = new Map();
+const EMERALD_REWARD_COOLDOWN_MS = 60 * 1000;
 
 export default {
   name: Events.MessageCreate,
@@ -301,12 +315,19 @@ async function handleRandomEmeraldReward(message, client) {
       return;
     }
 
-    const cooldownKey = `${message.guild.id}:${message.author.id}`;
+    const cooldownKey =
+      `${message.guild.id}:${message.author.id}`;
+
     const now = Date.now();
-    const lastReward = emeraldRewardCooldowns.get(cooldownKey) || 0;
+
+    const lastReward =
+      emeraldRewardCooldowns.get(cooldownKey) || 0;
 
     // 1 minute cooldown after earning Emeralds
-    if (now - lastReward < EMERALD_REWARD_COOLDOWN_MS) {
+    if (
+      now - lastReward <
+      EMERALD_REWARD_COOLDOWN_MS
+    ) {
       return;
     }
 
@@ -316,7 +337,13 @@ async function handleRandomEmeraldReward(message, client) {
     }
 
     const rewards = [5, 10, 15, 25];
-    const amount = rewards[Math.floor(Math.random() * rewards.length)];
+
+    const amount =
+      rewards[
+        Math.floor(
+          Math.random() * rewards.length
+        )
+      ];
 
     await EconomyService.addEmeralds(
       client,
@@ -326,7 +353,10 @@ async function handleRandomEmeraldReward(message, client) {
       'chat'
     );
 
-    emeraldRewardCooldowns.set(cooldownKey, now);
+    emeraldRewardCooldowns.set(
+      cooldownKey,
+      now
+    );
 
     await message.channel.send(
       `💎 **${message.author} earned ${amount} Emeralds!**`
@@ -342,6 +372,7 @@ async function handleRandomEmeraldReward(message, client) {
     );
   }
 }
+
 async function handleLeveling(message, client) {
   try {
     const rateLimitKey =
@@ -435,18 +466,21 @@ async function handleLeveling(message, client) {
       levelingConfig.xpPerMessage?.max ||
       25;
 
-    const safeMinXP = Math.max(1, minXP);
+    const safeMinXP =
+      Math.max(1, minXP);
 
-    const safeMaxXP = Math.max(
-      safeMinXP,
-      maxXP
-    );
+    const safeMaxXP =
+      Math.max(
+        safeMinXP,
+        maxXP
+      );
 
     const xpToGive =
       Math.floor(
         Math.random() *
         (safeMaxXP - safeMinXP + 1)
-      ) + safeMinXP;
+      ) +
+      safeMinXP;
 
     let finalXP = xpToGive;
 
@@ -470,15 +504,13 @@ async function handleLeveling(message, client) {
     if (result?.leveledUp) {
       const emeraldReward = 50;
 
-    await EconomyService.addEmeralds(
+      await EconomyService.addEmeralds(
         client,
         message.guild.id,
         message.author.id,
         emeraldReward,
         'level-up'
-    );
-
-
+      );
     }
   } catch (error) {
     logger.error(
