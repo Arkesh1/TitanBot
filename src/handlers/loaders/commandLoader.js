@@ -242,7 +242,7 @@ function prepareCommandsForRegistration(commands) {
     const remaining = ['beg','crime','daily','fish','gamble'];
 
     for (const command of commands) {
-        if (priorityCommands.includes(command.name)) {
+        if (priority.includes(command.name)) {
             priority.push(command);
         } else {
             remaining.push(command);
