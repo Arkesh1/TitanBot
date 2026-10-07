@@ -359,7 +359,7 @@ async function handleRandomEmeraldReward(message, client) {
     );
 
     await message.channel.send(
-      `💎 **${message.author} earned ${amount} Emeralds!**`
+      ``<:emerald:1556038756102832270> **${message.author} earned ${amount} Emeralds!**``
     );
 
     logger.debug(
