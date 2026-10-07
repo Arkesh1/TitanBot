@@ -238,7 +238,7 @@ function prepareCommandsForRegistration(commands) {
 
 
 
-    const priority = [ 'sponsorship','addemerald'];
+    const priority = [ 'sponsorship','add emerald'];
     const remaining = ['beg','crime','daily','fish','gamble'];
 
     for (const command of commands) {
