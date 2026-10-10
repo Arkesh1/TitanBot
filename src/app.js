@@ -25,6 +25,7 @@ import { EXPECTED_SCHEMA_VERSION, EXPECTED_SCHEMA_LABEL } from './config/databas
 import {
   startYouTubeNotifications
 } from './services/youtubeNotificationService.js';
+import { registerFlowerReward } from './services/flowerService.js';
 
 class TitanBot extends Client {
   constructor() {
@@ -95,7 +96,7 @@ class TitanBot extends Client {
       startupLog('Loading handlers...');
       await this.loadHandlers();
       startupLog('Handlers loaded');
-
+registerFlowerReward(this);
       initializeMusic(this);
 
       startupLog('Logging into Discord...');
