@@ -13,19 +13,13 @@ const rewardedMessages = new Set();
 // Prevent the service from registering duplicate listeners
 const registeredClients = new WeakSet();
 
+
+const FLOWER_STICKER_ID = '1558495367014912050';
+
 export function flowerPayload(target, text) {
     return {
         content: text,
-        files: [
-            {
-                attachment: path.join(
-                    process.cwd(),
-                    'src',
-                    'golem-flower.png'
-                ),
-                name: 'golem-flower.png'
-            }
-        ],
+        stickers: [FLOWER_STICKER_ID],
         allowedMentions: {
             users: target ? [target.id] : [],
             repliedUser: false
