@@ -123,7 +123,7 @@ export default {
                         logger.info(
                             `Awarded 100 Emeralds to ${inviterId} for inviting ${user.id} in guild ${guild.id}`
                         );
-                           }
+                           
 
                         // -------------------------------------------------
                         // INVITE REWARD MESSAGE
@@ -172,7 +172,7 @@ export default {
                     );
                 }
             }
-
+        }
             // =====================================================
             // WELCOME MESSAGE + WELCOME CARD
             // =====================================================
