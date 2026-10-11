@@ -1,14 +1,18 @@
-
+```js
 import { Events } from 'discord.js';
 import { logger } from '../utils/logger.js';
 
-const FLOWER_EMOJIS = ['🌼', '🌸', '🌺', '🌻', '🌷', '💐'];
+const FLOWER_EMOJIS = new Set([
+    '🌼', '🌸', '🌺', '🌻', '🌷', '💐'
+]);
+
 const FLOWER_STICKER_ID = '1558495367014912050';
 
 const THANKS_REGEX =
-    /\b(thanks?|thank\s*you|thank\s*u|thx|tysm|ty)\b/i;
+    /\b(?:thanks?|thank\s*you|thank\s*u|thx|tysm|ty)\b/i;
 
 const rewardedMessages = new Set();
+const processingMessages = new Set();
 const registeredClients = new WeakSet();
 
 export function flowerPayload(target, text) {
@@ -25,9 +29,31 @@ export function flowerPayload(target, text) {
 async function sendFlower(message, target, text, source) {
     try {
         await message.reply(flowerPayload(target, text));
-        logger.info(`🌼 Flower response sent (${source})`);
-    } catch (error) {
-        logger.error(`Failed to send flower (${source}):`, error);
+        logger.info(`🌼 Flower sticker and message sent (${source})`);
+        return true;
+    } catch (stickerError) {
+        logger.warn(
+            `Flower sticker send failed (${source}): ${stickerError.message}`
+        );
+
+        try {
+            await message.reply({
+                content: text,
+                allowedMentions: {
+                    users: target ? [target.id] : [],
+                    repliedUser: false
+                }
+            });
+
+            logger.info(`🌼 Flower text fallback sent (${source})`);
+            return true;
+        } catch (textError) {
+            logger.error(
+                `Flower text fallback also failed (${source}):`,
+                textError
+            );
+            return false;
+        }
     }
 }
 
@@ -49,36 +75,50 @@ export function registerFlowerReward(client) {
                 await reaction.fetch();
             }
 
-            if (reaction.message.partial) {
-                await reaction.message.fetch();
-            }
-
             const message = reaction.message;
+
+            if (message.partial) {
+                await message.fetch();
+            }
 
             if (!message.guild || !message.author) return;
             if (message.author.bot) return;
-            if (!FLOWER_EMOJIS.includes(reaction.emoji.name)) return;
+            if (!FLOWER_EMOJIS.has(reaction.emoji.name)) return;
             if (message.author.id === user.id) return;
-            if (rewardedMessages.has(message.id)) return;
 
-            rewardedMessages.add(message.id);
+            if (
+                rewardedMessages.has(message.id) ||
+                processingMessages.has(message.id)
+            ) {
+                return;
+            }
 
-            logger.info(
-                `🌼 ${user.tag} reacted to ${message.author.tag}'s message`
-            );
+            processingMessages.add(message.id);
 
-            await sendFlower(
-                message,
-                message.author,
-                `The Iron Golem gives ${message.author} a flower for the great work. 🌼`,
-                'reaction'
-            );
+            try {
+                logger.info(
+                    `🌼 Flower reaction detected: ${user.tag} reacted to ${message.author.tag}'s message`
+                );
+
+                const sent = await sendFlower(
+                    message,
+                    message.author,
+                    `The Iron Golem gives ${message.author} a flower for the great work. 🌼`,
+                    'reaction'
+                );
+
+                if (sent) {
+                    rewardedMessages.add(message.id);
+                }
+            } finally {
+                processingMessages.delete(message.id);
+            }
         } catch (error) {
-            logger.error('Flower reaction error:', error);
+            logger.error('Flower reaction handler failed:', error);
         }
     });
 
-    // Thank-you messages that mention someone or reply to their message
+    // Thank-you messages mentioning someone or replying to their message
     client.on(Events.MessageCreate, async (message) => {
         try {
             if (!message.guild || message.author.bot) return;
@@ -87,7 +127,7 @@ export function registerFlowerReward(client) {
             if (!content || !THANKS_REGEX.test(content)) return;
 
             logger.info(
-                `🙏 Thanks detected from ${message.author.tag}: ${content}`
+                `🙏 Thank-you message detected from ${message.author.tag}`
             );
 
             let target = message.mentions.users.find(
@@ -108,21 +148,21 @@ export function registerFlowerReward(client) {
                         target = repliedMessage.author;
                     }
                 } catch (error) {
-                    logger.debug(
-                        'Could not fetch replied message for flower reward.'
+                    logger.warn(
+                        `Could not fetch replied message: ${error.message}`
                     );
                 }
             }
 
             if (!target) {
-                logger.debug(
-                    'Thanks detected, but no eligible target was found.'
+                logger.info(
+                    'Thank-you detected, but no eligible mentioned or replied-to user was found.'
                 );
                 return;
             }
 
             logger.info(
-                `🌼 ${message.author.tag} thanked ${target.tag}`
+                `🌼 Sending thank-you flower to ${target.tag}`
             );
 
             await sendFlower(
@@ -132,7 +172,8 @@ export function registerFlowerReward(client) {
                 'thanks'
             );
         } catch (error) {
-            logger.error('Flower thanks error:', error);
+            logger.error('Flower thank-you handler failed:', error);
         }
     });
 }
+```
