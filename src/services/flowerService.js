@@ -29,7 +29,7 @@ export function flowerPayload(target, text) {
 async function sendFlower(message, target, text, source) {
     try {
         await message.reply(flowerPayload(target, text));
-        logger.info(`🌼 Flower sticker and message sent (${source})`);
+logger.info('Flower sticker and message sent (' + source + ')');
         return true;
     } catch (stickerError) {
         logger.warn(
