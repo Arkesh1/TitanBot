@@ -90,7 +90,8 @@ export default {
                     // -------------------------------------------------
                     // REWARD INVITER
                     // -------------------------------------------------
-
+                       const EXCLUDED_ROLE_ID =
+                            '1553049952899567616';
                     if (
                         usedInvite &&
                         usedInvite.inviter &&
@@ -98,6 +99,18 @@ export default {
                     ) {
                         const inviterId =
                             usedInvite.inviter.id;
+                         const inviterMember =
+                                await guild.members.fetch(inviterId);
+
+                           if (
+                                inviterMember.roles.cache.has(
+                                    EXCLUDED_ROLE_ID
+                                )
+                            ) {
+                               console.log(
+                                    `Invite reward skipped for ${inviterId}: excluded role`
+                                );
+                            } else {
 
                         await EconomyService.addEmeralds(
                             client,
@@ -110,6 +123,7 @@ export default {
                         logger.info(
                             `Awarded 100 Emeralds to ${inviterId} for inviting ${user.id} in guild ${guild.id}`
                         );
+                           }
 
                         // -------------------------------------------------
                         // INVITE REWARD MESSAGE
