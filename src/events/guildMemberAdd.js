@@ -87,40 +87,48 @@ export default {
                         );
                     }
 
+              
                     // -------------------------------------------------
                     // REWARD INVITER
                     // -------------------------------------------------
+
                     const EXCLUDED_ROLE_ID = '1553049952899567616';
+
                     if (
                         usedInvite &&
                         usedInvite.inviter &&
-                        usedInvite.inviter.id !== user.id &&
-                  
+                        usedInvite.inviter.id !== user.id
                     ) {
-                        const inviterId =
-                            usedInvite.inviter.id;
+                        const inviterId = usedInvite.inviter.id;
 
-                 const inviterMember = await guild.members.fetch(inviterId);
+                        const inviterMember =
+                            await guild.members.fetch(inviterId);
 
-    if (
-        inviterMember.roles.cache.has(EXCLUDED_ROLE_ID)
-    ) {
-        logger.info(
-            `Invite reward skipped for ${inviterId}: excluded role`
-        );
-    } else {
-        await EconomyService.addEmeralds(
-            client,
-            guild.id,
-            inviterId,
-            100,
-            'invite-reward'
-        );
+                        if (
+                            inviterMember.roles.cache.has(
+                                EXCLUDED_ROLE_ID
+                            )
+                        ) {
+                            logger.info(
+                                `Invite reward skipped for ${inviterId}: excluded role`
+                            );
+                        } else {
+                            await EconomyService.addEmeralds(
+                                client,
+                                guild.id,
+                                inviterId,
+                                100,
+                                'invite-reward'
+                            );
 
-                        logger.info(
-                            `Awarded 100 Emeralds to ${inviterId} for inviting ${user.id} in guild ${guild.id}`
-                        );
-    }
+                            logger.info(
+                                `Awarded 100 Emeralds to ${inviterId} for inviting ${user.id} in guild ${guild.id}`
+                            );
+
+                            // Keep your existing INVITE REWARD MESSAGE
+                            // try/catch block here, inside this else.
+                        }
+                    }
                         // -------------------------------------------------
                         // INVITE REWARD MESSAGE
                         // -------------------------------------------------
