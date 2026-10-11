@@ -29,11 +29,12 @@ export function flowerPayload(target, text) {
 async function sendFlower(message, target, text, source) {
     try {
         await message.reply(flowerPayload(target, text));
-logger.info('Flower sticker and message sent (' + source + ')');
+        logger.info('Flower sticker and message sent (' + source + ')');
         return true;
     } catch (stickerError) {
         logger.warn(
-            `Flower sticker send failed (${source}): ${stickerError.message}`
+            'Flower sticker send failed (' + source + '): ' +
+            stickerError.message
         );
 
         try {
@@ -45,13 +46,10 @@ logger.info('Flower sticker and message sent (' + source + ')');
                 }
             });
 
-            logger.info(`🌼 Flower text fallback sent (${source})`);
+            logger.info('Flower text fallback sent (' + source + ')');
             return true;
         } catch (textError) {
-            logger.error(
-                `Flower text fallback also failed (${source}):`,
-                textError
-            );
+            logger.error('Flower text fallback also failed:', textError);
             return false;
         }
     }
