@@ -102,6 +102,30 @@ registerFlowerReward(this);
 
 console.log('[FLOWER DEBUG] app.js finished flower registration');
 
+      this.on('ready', () => {
+    console.log('[FLOWER DEBUG] Discord client is ready');
+});
+
+this.on('messageCreate', (message) => {
+    if (!message.author?.bot) {
+        console.log(
+            '[FLOWER DEBUG] Message received:',
+            message.guildId,
+            message.author.tag
+        );
+    }
+});
+
+this.on('messageReactionAdd', (reaction, user) => {
+    if (!user.bot) {
+        console.log(
+            '[FLOWER DEBUG] Reaction received:',
+            reaction.emoji.name,
+            user.tag
+        );
+    }
+});
+
       initializeMusic(this);
 
       startupLog('Logging into Discord...');
