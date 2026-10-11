@@ -63,13 +63,14 @@ async function sendFlower(message, target, text, source) {
 }
 
 export function registerFlowerReward(client) {
+    console.log('[FLOWER DEBUG] registerFlowerReward() was called');
+
     if (registeredClients.has(client)) {
-        logger.warn('Flower reward system is already registered.');
+        console.log('[FLOWER DEBUG] Already registered');
         return;
     }
 
-    registeredClients.add(client);
-    logger.info('Flower reward system registered');
+    // Keep the rest of your existing function unchanged.
 
     // Reacting with a flower rewards the author of the message.
     client.on(Events.MessageReactionAdd, async (reaction, user) => {
