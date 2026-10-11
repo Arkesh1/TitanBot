@@ -124,11 +124,15 @@ export default {
                             `Awarded 100 Emeralds to ${inviterId} for inviting ${user.id} in guild ${guild.id}`
                         );
                            
-
+                           }
                         // -------------------------------------------------
                         // INVITE REWARD MESSAGE
                         // -------------------------------------------------
-
+                          if (
+                                !inviterMember.roles.cache.has(
+                                    EXCLUDED_ROLE_ID
+                                )
+                            ) {
                         try {
                             const channel =
                                 guild.channels.cache.find(
@@ -173,7 +177,7 @@ export default {
                 }
             }
         }
-    }
+    
             // =====================================================
             // WELCOME MESSAGE + WELCOME CARD
             // =====================================================
