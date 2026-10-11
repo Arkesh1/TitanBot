@@ -1,4 +1,3 @@
-```js
 import { SlashCommandBuilder } from 'discord.js';
 import { InteractionHelper } from '../../utils/interactionHelper.js';
 import { logger } from '../../utils/logger.js';
@@ -60,4 +59,3 @@ export default {
         }
     }
 };
-```
