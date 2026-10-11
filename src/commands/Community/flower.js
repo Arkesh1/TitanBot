@@ -32,9 +32,18 @@ export default {
             : 'The Iron Golem gives you a flower. 🌼';
 
         try {
-            await interaction.editReply(
+            // Send the sticker as a regular channel message.
+            if (!interaction.channel?.isTextBased() ||
+                typeof interaction.channel.send !== 'function') {
+                throw new Error('This channel cannot send messages.');
+            }
+
+            await interaction.channel.send(
                 flowerPayload(target, text)
             );
+
+            // Remove the temporary slash-command response.
+            await interaction.deleteReply();
 
             logger.info('🌼 /flower sticker sent successfully');
         } catch (error) {
