@@ -128,11 +128,6 @@ export default {
                         // -------------------------------------------------
                         // INVITE REWARD MESSAGE
                         // -------------------------------------------------
-                          if (
-                                !inviterMember.roles.cache.has(
-                                    EXCLUDED_ROLE_ID
-                                )
-                            ) {
                         try {
                             const channel =
                                 guild.channels.cache.find(
@@ -153,7 +148,7 @@ export default {
                                     ) &&
                                     permissions?.has(
                                         PermissionFlagsBits.SendMessages
-                                    )
+                                    ) && inviterMember.user.username !== 'FilmySteve'
                                 ) {
                                     await channel.send(
                                         `<@${inviterId}> earned **100 Emeralds** for inviting ${user}!`
@@ -176,7 +171,7 @@ export default {
                     );
                 }
             }
-        }
+        
     
             // =====================================================
             // WELCOME MESSAGE + WELCOME CARD
