@@ -102,7 +102,7 @@ registerFlowerReward(this);
 
 console.log('[FLOWER DEBUG] app.js finished flower registration');
 
-      this.on('ready', () => {
+      this.on('clientReady', () => {
     console.log('[FLOWER DEBUG] Discord client is ready');
 });
 
