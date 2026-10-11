@@ -73,6 +73,12 @@ export function registerFlowerReward(client) {
 
     // Reacting with a flower rewards the author of the message.
     client.on(Events.MessageReactionAdd, async (reaction, user) => {
+        logger.info(
+    '[FLOWER DEBUG] Reaction event received: ' +
+    String(reaction.emoji.name) +
+    ' | User: ' +
+    String(user.tag)
+);
         try {
             if (user.bot) return;
 
@@ -130,6 +136,12 @@ export function registerFlowerReward(client) {
 
     // Thank-you messages must mention someone or reply to their message.
     client.on(Events.MessageCreate, async (message) => {
+        logger.info(
+    '[FLOWER DEBUG] Message event received in guild: ' +
+    String(message.guildId) +
+    ' | Author: ' +
+    String(message.author?.tag)
+);
         try {
             if (!message.guild || message.author.bot) return;
 
