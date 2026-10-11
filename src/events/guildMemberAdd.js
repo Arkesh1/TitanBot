@@ -88,11 +88,10 @@ export default {
                     }
 
               
+                
                     // -------------------------------------------------
                     // REWARD INVITER
                     // -------------------------------------------------
-
-                    const EXCLUDED_ROLE_ID = '1553049952899567616';
 
                     if (
                         usedInvite &&
@@ -100,33 +99,74 @@ export default {
                         usedInvite.inviter.id !== user.id
                     ) {
                         const inviterId = usedInvite.inviter.id;
+                        const EXCLUDED_ROLE_ID =
+                            '1553049952899567616';
 
-                        const inviterMember =
-                            await guild.members.fetch(inviterId);
+                        try {
+                            const inviterMember =
+                                await guild.members.fetch(inviterId);
 
-                        if (
-                            inviterMember.roles.cache.has(
-                                EXCLUDED_ROLE_ID
-                            )
-                        ) {
-                            logger.info(
-                                `Invite reward skipped for ${inviterId}: excluded role`
+                            if (
+                                inviterMember.roles.cache.has(
+                                    EXCLUDED_ROLE_ID
+                                )
+                            ) {
+                                logger.info(
+                                    `Invite reward skipped for ${inviterId}: excluded role`
+                                );
+                            } else {
+                                await EconomyService.addEmeralds(
+                                    client,
+                                    guild.id,
+                                    inviterId,
+                                    100,
+                                    'invite-reward'
+                                );
+
+                                logger.info(
+                                    `Awarded 100 Emeralds to ${inviterId} for inviting ${user.id} in guild ${guild.id}`
+                                );
+
+                                // INVITE REWARD MESSAGE
+                                try {
+                                    const channel =
+                                        guild.channels.cache.find(
+                                            channel =>
+                                                channel.name ===
+                                                '📥│invite-rewards'
+                                        );
+
+                                    if (channel?.isTextBased()) {
+                                        const permissions =
+                                            channel.permissionsFor(
+                                                guild.members.me
+                                            );
+
+                                        if (
+                                            permissions?.has(
+                                                PermissionFlagsBits.ViewChannel
+                                            ) &&
+                                            permissions?.has(
+                                                PermissionFlagsBits.SendMessages
+                                            )
+                                        ) {
+                                            await channel.send(
+                                                `<@${inviterId}> earned **100 Emeralds** for inviting ${user}!`
+                                            );
+                                        }
+                                    }
+                                } catch (error) {
+                                    logger.debug(
+                                        'Could not send invite reward message:',
+                                        error
+                                    );
+                                }
+                            }
+                        } catch (error) {
+                            logger.warn(
+                                `Could not process invite reward for ${inviterId}:`,
+                                error
                             );
-                        } else {
-                            await EconomyService.addEmeralds(
-                                client,
-                                guild.id,
-                                inviterId,
-                                100,
-                                'invite-reward'
-                            );
-
-                            logger.info(
-                                `Awarded 100 Emeralds to ${inviterId} for inviting ${user.id} in guild ${guild.id}`
-                            );
-
-                            // Keep your existing INVITE REWARD MESSAGE
-                            // try/catch block here, inside this else.
                         }
                     }
                         // -------------------------------------------------
