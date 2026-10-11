@@ -96,7 +96,12 @@ class TitanBot extends Client {
       startupLog('Loading handlers...');
       await this.loadHandlers();
       startupLog('Handlers loaded');
+logger.info('[FLOWER DEBUG] Registering flower service');
+
 registerFlowerReward(this);
+
+logger.info('[FLOWER DEBUG] Flower service registered');
+
       initializeMusic(this);
 
       startupLog('Logging into Discord...');
