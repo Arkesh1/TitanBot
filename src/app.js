@@ -96,11 +96,11 @@ class TitanBot extends Client {
       startupLog('Loading handlers...');
       await this.loadHandlers();
       startupLog('Handlers loaded');
-logger.info('[FLOWER DEBUG] Registering flower service');
+console.log('[FLOWER DEBUG] app.js reached flower registration');
 
 registerFlowerReward(this);
 
-logger.info('[FLOWER DEBUG] Flower service registered');
+console.log('[FLOWER DEBUG] app.js finished flower registration');
 
       initializeMusic(this);
 
