@@ -3,7 +3,12 @@ import { Events } from 'discord.js';
 import { logger } from '../utils/logger.js';
 
 const FLOWER_EMOJIS = new Set([
-    '🌼', '🌸', '🌺', '🌻', '🌷', '💐'
+    '🌼',
+    '🌸',
+    '🌺',
+    '🌻',
+    '🌷',
+    '💐'
 ]);
 
 const FLOWER_STICKER_ID = '1558495367014912050';
@@ -34,7 +39,7 @@ async function sendFlower(message, target, text, source) {
     } catch (stickerError) {
         logger.warn(
             'Flower sticker send failed (' + source + '): ' +
-            stickerError.message
+            String(stickerError?.message || stickerError)
         );
 
         try {
@@ -49,7 +54,10 @@ async function sendFlower(message, target, text, source) {
             logger.info('Flower text fallback sent (' + source + ')');
             return true;
         } catch (textError) {
-            logger.error('Flower text fallback also failed:', textError);
+            logger.error(
+                'Flower text fallback also failed:',
+                textError
+            );
             return false;
         }
     }
@@ -62,9 +70,9 @@ export function registerFlowerReward(client) {
     }
 
     registeredClients.add(client);
-    logger.info('🌼 Flower reward system registered');
+    logger.info('Flower reward system registered');
 
-    // Flower reactions
+    // Reacting with a flower rewards the author of the message.
     client.on(Events.MessageReactionAdd, async (reaction, user) => {
         try {
             if (user.bot) return;
@@ -95,13 +103,18 @@ export function registerFlowerReward(client) {
 
             try {
                 logger.info(
-                    `🌼 Flower reaction detected: ${user.tag} reacted to ${message.author.tag}'s message`
+                    'Flower reaction detected from ' +
+                    user.tag +
+                    ' on a message by ' +
+                    message.author.tag
                 );
 
                 const sent = await sendFlower(
                     message,
                     message.author,
-                    `The Iron Golem gives ${message.author} a flower for the great work. 🌼`,
+                    'The Iron Golem gives ' +
+                        message.author.toString() +
+                        ' a flower for the great work.',
                     'reaction'
                 );
 
@@ -116,16 +129,17 @@ export function registerFlowerReward(client) {
         }
     });
 
-    // Thank-you messages mentioning someone or replying to their message
+    // Thank-you messages must mention someone or reply to their message.
     client.on(Events.MessageCreate, async (message) => {
         try {
             if (!message.guild || message.author.bot) return;
 
             const content = message.content?.trim();
+
             if (!content || !THANKS_REGEX.test(content)) return;
 
             logger.info(
-                `🙏 Thank-you message detected from ${message.author.tag}`
+                'Thank-you message detected from ' + message.author.tag
             );
 
             let target = message.mentions.users.find(
@@ -147,7 +161,8 @@ export function registerFlowerReward(client) {
                     }
                 } catch (error) {
                     logger.warn(
-                        `Could not fetch replied message: ${error.message}`
+                        'Could not fetch replied message: ' +
+                        String(error?.message || error)
                     );
                 }
             }
@@ -160,17 +175,22 @@ export function registerFlowerReward(client) {
             }
 
             logger.info(
-                `🌼 Sending thank-you flower to ${target.tag}`
+                'Sending thank-you flower to ' + target.tag
             );
 
             await sendFlower(
                 message,
                 target,
-                `The Iron Golem gives ${target} a flower for helping out. 🌼`,
+                'The Iron Golem gives ' +
+                    target.toString() +
+                    ' a flower for helping out.',
                 'thanks'
             );
         } catch (error) {
-            logger.error('Flower thank-you handler failed:', error);
+            logger.error(
+                'Flower thank-you handler failed:',
+                error
+            );
         }
     });
 }
