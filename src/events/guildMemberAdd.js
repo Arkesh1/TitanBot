@@ -148,7 +148,9 @@ export default {
                                     ) &&
                                     permissions?.has(
                                         PermissionFlagsBits.SendMessages
-                                    ) && inviterMember.user.username !== 'FilmySteve'
+                                    ) && !inviterMember.roles.cache.has(
+                                    EXCLUDED_ROLE_ID
+                                )
                                 ) {
                                     await channel.send(
                                         `<@${inviterId}> earned **100 Emeralds** for inviting ${user}!`
