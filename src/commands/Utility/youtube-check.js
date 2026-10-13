@@ -1,40 +1,32 @@
 
-import {
-    SlashCommandBuilder,
-    MessageFlags,
-    PermissionFlagsBits,
-} from 'discord.js';
+async execute(interaction) {
+    await interaction.deferReply({
+        flags: MessageFlags.Ephemeral,
+    });
 
-import { checkYouTubeUploads } from '../../services/youtubeNotificationService.js';
-import { logger } from '../../utils/logger.js';
+    try {
+        const result = await checkYouTubeUploads(
+            interaction.client
+        );
 
-export default {
-    data: new SlashCommandBuilder()
-        .setName('youtube-check')
-        .setDescription(
-            'Manually check for the latest Filmy Steve YouTube upload.'
-        )
-        .setDefaultMemberPermissions(
-            PermissionFlagsBits.ManageGuild
-        ),
-
-    async execute(interaction) {
-        await interaction.deferReply({
-            flags: MessageFlags.Ephemeral,
-        });
-
-        try {
-            await checkYouTubeUploads(interaction.client);
-
+        if (result.status === 'initialized') {
             await interaction.editReply(
-                '✅ YouTube feed checked successfully. If a new upload was detected, the notification was sent.'
+                '✅ YouTube API connected. The latest video ID has been saved; existing videos were not announced.'
             );
-        } catch (error) {
-            logger.error('Manual YouTube check failed:', error);
-
+        } else if (result.count > 0) {
             await interaction.editReply(
-                '❌ The YouTube check failed. Check the bot logs and try again.'
+                `✅ YouTube check complete. Announced ${result.count} new video(s).`
+            );
+        } else {
+            await interaction.editReply(
+                '✅ YouTube check complete. No new uploads found.'
             );
         }
-    },
-};
+    } catch (error) {
+        logger.error('Manual YouTube check failed:', error);
+
+        await interaction.editReply(
+            `❌ YouTube check failed: ${error.message}`
+        );
+    }
+}
