@@ -4,7 +4,7 @@ import { logger } from '../utils/logger.js';
 const YOUTUBE_CHANNEL_ID = 'UCq0QaP-KqB5h3K0Ofqp6-oQ';
 
 const YOUTUBE_FEED_URL =
-    `https://www.youtube.com/feeds/videos.xml?channel_id=${YOUTUBE_CHANNEL_ID}`;
+    `https://www.youtube.com/feeds/videos.xml?channel_id=UCq0QaP-KqB5h3K0Ofqp6-oQ`;
 
 const TIME_ZONE = 'Asia/Kolkata';
 
