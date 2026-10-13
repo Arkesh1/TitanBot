@@ -7,12 +7,12 @@ const YOUTUBE_FEED_URL =
     `https://www.youtube.com/feeds/videos.xml?channel_id=${YOUTUBE_CHANNEL_ID}`;
 
 const TIME_ZONE = 'Asia/Kolkata';
-const CHECK_HOUR = 18;
-const CHECK_MINUTE = 0;
 
-const RETRY_INTERVAL = 2 * 60 * 1000;
+const CHECK_START_HOUR = 18; // 6:00 PM IST
+const CHECK_END_HOUR = 22;   // 10:00 PM IST (exclusive)
+const CHECK_INTERVAL = 15 * 60 * 1000;
+
 const REQUEST_TIMEOUT = 15 * 1000;
-const MAX_RETRY_WINDOW = 6 * 60 * 60 * 1000;
 
 const YOUTUBE_LAST_VIDEO_KEY =
     'youtube:filmy-steve:last-video-id';
@@ -78,7 +78,7 @@ function decodeXml(value) {
 
 function extractLatestVideo(xml) {
     // YouTube's Atom feed normally lists the newest video first.
-    // Deliberately process only the first entry.
+    // Only the first entry is processed.
     const entryMatch = xml.match(
         /<entry(?:\s[^>]*)?>([\s\S]*?)<\/entry>/
     );
@@ -141,6 +141,8 @@ function extractLatestVideo(xml) {
 }
 
 async function sendNotification(client, video) {
+    let sentSuccessfully = false;
+
     for (const guild of client.guilds.cache.values()) {
         const channel = guild.channels.cache.find(
             (item) =>
@@ -177,6 +179,8 @@ async function sendNotification(client, video) {
                 ],
             });
 
+            sentSuccessfully = true;
+
             logger.info(
                 `YouTube notification sent in ${guild.name}: ${video.title}`
             );
@@ -187,6 +191,8 @@ async function sendNotification(client, video) {
             );
         }
     }
+
+    return sentSuccessfully;
 }
 
 export async function checkYouTubeUploads(client) {
@@ -203,7 +209,8 @@ export async function checkYouTubeUploads(client) {
         YOUTUBE_LAST_VIDEO_KEY
     );
 
-    // First successful check: initialize without announcing an old video.
+    // First successful check: save the current video without
+    // announcing an existing upload.
     if (!lastVideoId) {
         await client.db.set(
             YOUTUBE_LAST_VIDEO_KEY,
@@ -217,103 +224,99 @@ export async function checkYouTubeUploads(client) {
         return;
     }
 
-    // No new upload: do nothing.
+    // Nothing new has been uploaded.
     if (latestVideo.videoId === lastVideoId) {
         logger.info('YouTube check successful. No new video.');
         return;
     }
 
-    // Only the newest feed entry is ever announced.
-    await sendNotification(client, latestVideo);
-
-    await client.db.set(
-        YOUTUBE_LAST_VIDEO_KEY,
-        latestVideo.videoId
+    // Announce the new upload.
+    const sentSuccessfully = await sendNotification(
+        client,
+        latestVideo
     );
 
-    logger.info(
-        `Latest Filmy Steve video detected: ${latestVideo.title}`
-    );
+    // Save the ID only if at least one notification was sent.
+    // This allows a later check to retry if Discord sending fails.
+    if (sentSuccessfully) {
+        await client.db.set(
+            YOUTUBE_LAST_VIDEO_KEY,
+            latestVideo.videoId
+        );
+
+        logger.info(
+            `Latest Filmy Steve video announced: ${latestVideo.title}`
+        );
+    } else {
+        throw new Error(
+            'New video detected, but notification could not be sent to any server. Will retry at the next scheduled check.'
+        );
+    }
 }
 
+// Get the current date and time in IST.
+function getISTNow() {
+    return new Date(Date.now() + 330 * 60 * 1000);
+}
+
+// Calculate the next 15-minute boundary between 6 PM and 10 PM IST.
 function getDelayUntilNextCheck() {
-    const now = new Date();
+    const nowIST = getISTNow();
 
-    const parts = new Intl.DateTimeFormat('en-GB', {
-        timeZone: TIME_ZONE,
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hourCycle: 'h23',
-    }).formatToParts(now);
+    const year = nowIST.getUTCFullYear();
+    const month = nowIST.getUTCMonth();
+    const day = nowIST.getUTCDate();
+    const hour = nowIST.getUTCHours();
 
-    const values = Object.fromEntries(
-        parts.map(({ type, value }) => [type, value])
-    );
-
-    // 18:00 IST is 12:30 UTC. India does not observe daylight saving time.
-    let nextCheck = Date.UTC(
-        Number(values.year),
-        Number(values.month) - 1,
-        Number(values.day),
-        CHECK_HOUR - 5,
-        CHECK_MINUTE - 30,
-        0
-    );
-
-    if (nextCheck <= now.getTime()) {
-        nextCheck += 24 * 60 * 60 * 1000;
+    // Before 6 PM: wait until 6 PM today.
+    if (hour < CHECK_START_HOUR) {
+        return Date.UTC(
+            year, month, day,
+            CHECK_START_HOUR, 0, 0
+        ) - nowIST.getTime();
     }
 
-    return nextCheck - now.getTime();
+    // At or after 10 PM: wait until 6 PM tomorrow.
+    if (hour >= CHECK_END_HOUR) {
+        return Date.UTC(
+            year, month, day + 1,
+            CHECK_START_HOUR, 0, 0
+        ) - nowIST.getTime();
+    }
+
+    // During the checking window, schedule the next
+    // quarter-hour boundary.
+    const currentMinute = nowIST.getUTCMinutes();
+    const currentSecond = nowIST.getUTCSeconds();
+    const currentMs = nowIST.getUTCMilliseconds();
+
+    const minutesToNextBoundary =
+        15 - (currentMinute % 15);
+
+    return (
+        minutesToNextBoundary * 60 * 1000 -
+        currentSecond * 1000 -
+        currentMs
+    );
 }
 
-async function runDailyCheck(client) {
-    const deadline = Date.now() + MAX_RETRY_WINDOW;
-    let attempt = 0;
+async function runScheduledCheck(client) {
+    try {
+        logger.info('Running scheduled YouTube feed check.');
 
-    while (Date.now() < deadline) {
-        attempt += 1;
-
-        try {
-            logger.info(
-                `YouTube feed check attempt ${attempt}.`
-            );
-
-            await checkYouTubeUploads(client);
-
-            logger.info(
-                'YouTube feed check succeeded. Daily retry loop finished.'
-            );
-
-            return;
-        } catch (error) {
-            logger.error(
-                `YouTube feed check attempt ${attempt} failed:`,
-                error
-            );
-        }
-
-        const remaining = deadline - Date.now();
-
-        if (remaining <= 0) {
-            break;
-        }
-
-        await sleep(Math.min(RETRY_INTERVAL, remaining));
+        await checkYouTubeUploads(client);
+    } catch (error) {
+        logger.error(
+            'Scheduled YouTube feed check failed:',
+            error
+        );
     }
-
-    logger.warn(
-        'YouTube feed remained unavailable for 6 hours. Next attempt is scheduled for 6:00 PM IST tomorrow.'
-    );
 }
 
 export function startYouTubeNotifications(client) {
     let stopped = false;
     let scheduleTimer;
+    let running = false;
 
     const scheduleNextCheck = () => {
         if (stopped) return;
@@ -321,22 +324,44 @@ export function startYouTubeNotifications(client) {
         const delay = getDelayUntilNextCheck();
 
         logger.info(
-            `Next YouTube feed check scheduled in ${Math.ceil(delay / 60000)} minutes (6:00 PM IST).`
+            `Next YouTube check scheduled in ${Math.ceil(delay / 60000)} minutes. Checks run every 15 minutes from 6:00 PM to 10:00 PM IST.`
         );
 
         scheduleTimer = setTimeout(async () => {
-            await runDailyCheck(client);
-            scheduleNextCheck();
+            if (stopped) return;
+
+            const nowIST = getISTNow();
+            const hour = nowIST.getUTCHours();
+
+            if (
+                hour >= CHECK_START_HOUR &&
+                hour < CHECK_END_HOUR &&
+                !running
+            ) {
+                running = true;
+
+                try {
+                    await runScheduledCheck(client);
+                } finally {
+                    running = false;
+                }
+            }
+
+            // Always schedule the next check regardless of
+            // whether the previous check succeeded or failed.
+            if (!stopped) {
+                scheduleNextCheck();
+            }
         }, delay);
     };
 
     scheduleNextCheck();
 
     logger.info(
-        'YouTube notifications started. Daily check: 6:00 PM IST; retry interval: 2 minutes; maximum retry window: 6 hours.'
+        'YouTube notifications started. Daily schedule: 6:00 PM–10:00 PM IST, every 15 minutes. Checks continue after errors and successful uploads.'
     );
 
-    // Optional cleanup if your application needs to stop this scheduler.
+    // Call this function if the bot needs to stop the scheduler.
     return () => {
         stopped = true;
         clearTimeout(scheduleTimer);
