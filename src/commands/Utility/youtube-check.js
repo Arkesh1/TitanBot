@@ -5,7 +5,7 @@ import {
     PermissionFlagsBits,
 } from 'discord.js';
 
-import { checkYouTubeUploads } from '../../services/youtubeNotifications.js';
+import { checkYouTubeUploads } from '../../services/youtubeNotificationService.js';
 import { logger } from '../../utils/logger.js';
 
 export default {
