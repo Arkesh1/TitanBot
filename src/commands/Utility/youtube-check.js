@@ -1,3 +1,22 @@
+import {
+    SlashCommandBuilder,
+    MessageFlags,
+    PermissionFlagsBits,
+} from 'discord.js';
+
+import { checkYouTubeUploads } from '../../services/youtubeNotifications.js';
+import { checkYouTubeUploads } from '../../services/youtubeNotificationService.js';
+import { logger } from '../../utils/logger.js';
+
+export default {
+    data: new SlashCommandBuilder()
+        .setName('youtube-check')
+        .setDescription(
+            'Manually check for the latest Filmy Steve YouTube upload.'
+        )
+        .setDefaultMemberPermissions(
+            PermissionFlagsBits.ManageGuild
+        ),
 
 async execute(interaction) {
     await interaction.deferReply({
